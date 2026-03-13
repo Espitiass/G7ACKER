@@ -3,15 +3,9 @@
 Repositorio del **Grupo 7 – Semestre Integrador  
 Ingeniería Mecatrónica 2026-1**
 
-Este repositorio contiene el desarrollo completo de un **robot móvil terrestre**, incluyendo:
+Este repositorio contiene el desarrollo completo de un **robot móvil** capaz de operar de manera autónoma dentro de un entorno controlado.
 
-- Diseño mecánico
-- Sistemas de tracción y dirección
-- Desarrollo electrónico
-- Implementación de software
-- Documentación técnica del proyecto
-
-El objetivo del proyecto es integrar conocimientos de **mecánica, electrónica, control y programación** en el desarrollo de un sistema robótico funcional.
+Para ello, se implementará la metodología de **Aprendizaje Basado en Proyectos (ABP)**, desarrollando un plan de acción que comprende la simulación del sistema, el modelado y diseño mediante software CAD llamado Fusion, la fabricación de componentes a través de técnicas como impresión 3D, impresión en resina, la integración electrónica y el desarrollo de algoritmos de control y visión artificial en Python. El resultado esperado es la obtención de un prototipo funcional capaz de ejecutar el proceso de transporte en una bodega de manera autónoma, eficiente y repetible.
 
 ---
 
