@@ -12,7 +12,6 @@ Para ello, se implementará la metodología de **Aprendizaje Basado en Proyectos
 # Índice
 
 - [Descripción del Proyecto](#descripción-del-proyecto)
-- [Estructura del Repositorio](#estructura-del-repositorio)
 - [Diseño Mecánico](#diseño-mecánico)
 - [Códigos](#códigos)
 - [Documentación](#documentación)
@@ -36,8 +35,3 @@ El robot integra diferentes subsistemas:
 Cada uno de estos subsistemas fue diseñado, modelado y documentado dentro de este repositorio.
 
 ---
-
-# Estructura del Repositorio
-
-El repositorio se organiza en las siguientes carpetas principales:
-
