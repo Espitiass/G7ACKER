@@ -15,7 +15,7 @@ El conjunto de todos estos elementos conforma el **sistema de tracción del robo
 ## Base_Traccion
 
 [Link al diseño en Fusion 360](https://a360.co/4dkDRIV)
-![alt text](image.png)
+![alt text](Imágenes/image.png)
 
 La **base de tracción** constituye la estructura principal del sistema de locomoción del robot. Sobre esta pieza se montan los motores, soportes estructurales y demás componentes asociados al movimiento.
 
@@ -36,7 +36,7 @@ La base fue **fabricada mediante corte láser** en madera 4 mm, técnica que fac
 ## GearBox JGY370
 
 [Link al diseño en Fusion 360](https://a360.co/4luaPZA)
-![alt text](image-1.png)
+![alt text](Imágenes/image-1.png)
 
 El **motorreductor JGY370** es el encargado de generar el movimiento del robot. Este tipo de motor integra una **caja reductora (gearbox)** que reduce la velocidad de rotación del motor eléctrico mientras incrementa el torque disponible en el eje de salida.
 
@@ -55,7 +55,7 @@ Esto permitió validar aspectos como alineación, espacio disponible y compatibi
 ## Acople de la llanta al GearBox JGY370
 
 [Link al diseño en Fusion 360](https://a360.co/3NlTGo7)
-![alt text](image-2.png)
+![alt text](Imágenes/image-2.png)
 
 El **acople de la llanta al GearBox JGY370** es la pieza encargada de conectar el eje del motor con la rueda común del sistema de tracción.
 
@@ -77,7 +77,7 @@ Además, la impresión 3D facilita la fabricación rápida de prototipos y permi
 
 [Link al diseño en Fusion 360 del soporte derecho](https://a360.co/4uqkBQr)
 [Link al diseño en Fusion 360 del soporte izquierdo](https://a360.co/4lodmnX)
-![alt text](image-3.png)
+![alt text](Imágenes/image-3.png)
 
 El **soporte de motor derecho e izquierdo** tienen como función fijar cada uno de los motores reductores al chasis del robot, manteniendo su posición y alineación respecto a la rueda correspondiente.
 
@@ -95,7 +95,7 @@ La pieza fue **fabricada mediante impresión 3D en filamento PLA**, lo que permi
 ## Rueda común (Wheel)
 
 [Link al diseño en Fusion 360](https://a360.co/47i5jn9)
-![alt text](image-4.png)
+![alt text](Imágenes/image-4.png)
 
 La **rueda del sistema de tracción** es el elemento encargado de transformar el movimiento rotacional generado por el motor en **desplazamiento lineal del robot sobre la superficie**.
 
