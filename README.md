@@ -9,29 +9,22 @@ Para ello, se implementará la metodología de **Aprendizaje Basado en Proyectos
 
 ---
 
-# Índice
+# Estudiantes
 
-- [Descripción del Proyecto](#descripción-del-proyecto)
-- [Diseño Mecánico](#diseño-mecánico)
-- [Códigos](#códigos)
-- [Documentación](#documentación)
-- [Integrantes](#integrantes)
-- [Licencia](#licencia)
+- **Sofía Salomé Espitia Jiménez** – Área de diseño  
+- **Vanesa Galeano Franco** – Área de programación  
+- **Julián Andrés García Correa** – Área eléctrica y electrónica  
+- **Jose Lisander Hurtado Castañeda** – Área mecánica  
 
 ---
 
-# Descripción del Proyecto
+# Índice
 
-El proyecto consiste en el desarrollo de un **robot móvil con locomoción diferencial y dirección tipo Ackermann**, diseñado para aplicaciones de navegación autónoma en entornos interiores.
-
-El robot integra diferentes subsistemas:
-
-- **Sistema de tracción**
-- **Sistema de dirección**
-- **Sistema electrónico**
-- **Sistema de control**
-- **Arquitectura de software**
-
-Cada uno de estos subsistemas fue diseñado, modelado y documentado dentro de este repositorio.
+- [Descripción del Proyecto](#g7acker)
+- [Diseño Mecánico](#diseño-mecánico)
+- [Códigos](#códigos)
+- [Documentación](#documentación)
+- [Estudiantes](#estudiantes)
+- [Licencia](#licencia)
 
 ---
