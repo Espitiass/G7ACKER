@@ -114,6 +114,7 @@ Esta práctica es común dentro del diseño mecánico asistido por computador, y
 ## Soporte LiPo
 
 [Link al diseño en Fusion 360](https://a360.co/4uqY3Pr)
+![alt text](Imágenes/image-5.png)
 
 El **soporte para la batería LiPo** fue diseñado con el objetivo de alojar de forma segura la batería encargada de alimentar el sistema eléctrico del robot.
 
@@ -132,6 +133,7 @@ Este soporte será **fabricado mediante corte de madera 4 mm**.
 ## Ensamblaje del sistema de tracción
 
 [Ensamblaje del sistema de tracción](https://a360.co/3P7TtFJ)
+![alt text](Imágenes/image-6.png)
 
 El sistema completo de tracción se obtiene mediante el **ensamblaje de todos los componentes descritos anteriormente**.
 
