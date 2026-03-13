@@ -55,6 +55,7 @@ Esto permitió validar aspectos como alineación, espacio disponible y compatibi
 ## Acople de la llanta al GearBox JGY370
 
 [Link al diseño en Fusion 360](https://a360.co/3NlTGo7)
+![alt text](image-2.png)
 
 El **acople de la llanta al GearBox JGY370** es la pieza encargada de conectar el eje del motor con la rueda común del sistema de tracción.
 
@@ -76,6 +77,7 @@ Además, la impresión 3D facilita la fabricación rápida de prototipos y permi
 
 [Link al diseño en Fusion 360 del soporte derecho](https://a360.co/4uqkBQr)
 [Link al diseño en Fusion 360 del soporte izquierdo](https://a360.co/4lodmnX)
+![alt text](image-3.png)
 
 El **soporte de motor derecho e izquierdo** tienen como función fijar cada uno de los motores reductores al chasis del robot, manteniendo su posición y alineación respecto a la rueda correspondiente.
 
@@ -93,6 +95,7 @@ La pieza fue **fabricada mediante impresión 3D en filamento PLA**, lo que permi
 ## Rueda común (Wheel)
 
 [Link al diseño en Fusion 360](https://a360.co/47i5jn9)
+![alt text](image-4.png)
 
 La **rueda del sistema de tracción** es el elemento encargado de transformar el movimiento rotacional generado por el motor en **desplazamiento lineal del robot sobre la superficie**.
 
