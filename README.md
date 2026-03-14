@@ -21,9 +21,6 @@ Para ello, se implementará la metodología de **Aprendizaje Basado en Proyectos
 # Índice
 
 - [Descripción del Proyecto](#g7acker)
-- [Diseño Mecánico](#diseño-mecánico)
-- [Códigos](#códigos)
-- [Documentación](#documentación)
 - [Estudiantes](#estudiantes)
 - [Licencia](#licencia)
 
