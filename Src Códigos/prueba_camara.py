@@ -10,7 +10,7 @@ try:
     picam2.capture_file("foto_prueba.jpg")
     picam2.stop()
 
-    print("Foto tomada correctamente")
+    print("Foto tomada correctamente")td
 
 except Exception as e:
     print("Error:", e)
