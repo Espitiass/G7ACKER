@@ -1,6 +1,7 @@
 import RPi.GPIO as GPIO
 import time
 
+# Pines
 TRIG = 23
 ECHO = 24
 
@@ -8,43 +9,31 @@ GPIO.setmode(GPIO.BCM)
 GPIO.setup(TRIG, GPIO.OUT)
 GPIO.setup(ECHO, GPIO.IN)
 
+# Asegurar TRIG en bajo
 GPIO.output(TRIG, False)
 print("Esperando sensor...")
 time.sleep(2)
 
-def medir_distancia():
-    # Pulso TRIG
-    GPIO.output(TRIG, True)
-    time.sleep(0.00001)
-    GPIO.output(TRIG, False)
-
-    inicio = time.time()
-    timeout = inicio
-
-    # Esperar que ECHO suba
-    while GPIO.input(ECHO) == 0:
-        inicio = time.time()
-        if inicio - timeout > 0.02:  # 20 ms timeout
-            return None
-
-    # Esperar que ECHO baje
-    while GPIO.input(ECHO) == 1:
-        fin = time.time()
-        if fin - inicio > 0.02:  # 20 ms timeout
-            return None
-
-    duracion = fin - inicio
-    distancia = duracion * 34300 / 2
-    return distancia
-
 try:
     while True:
-        distancia = medir_distancia()
+        # Enviar pulso
+        GPIO.output(TRIG, True)
+        time.sleep(0.00001)  # 10 microsegundos
+        GPIO.output(TRIG, False)
 
-        if distancia is None:
-            print("⚠️ No hay lectura (revisa conexión)")
-        else:
-            print(f"Distancia: {distancia:.2f} cm")
+        # Medir tiempo de respuesta
+        while GPIO.input(ECHO) == 0:
+            inicio = time.time()
+
+        while GPIO.input(ECHO) == 1:
+            fin = time.time()
+
+        duracion = fin - inicio
+
+        # Calcular distancia
+        distancia = (duracion * 34300) / 2
+
+        print(f"Distancia: {distancia:.2f} cm")
 
         time.sleep(0.5)
 
