@@ -20,7 +20,7 @@ Posteriormente, los componentes fueron **fabricados mediante impresión 3D**, lo
 # SG90 Servo Motor
 
 [Link al diseño en Fusion 360](https://a360.co/3P9kEA0)
-![alt text](![alt text](../../../docs/imagenes/image-7.png)
+![alt text](../../../docs/imagenes/image-7.png)
 
 El **servo motor SG90** es el actuador encargado de generar el movimiento del sistema de dirección.
 
@@ -40,7 +40,7 @@ El modelo del servo fue incluido dentro del entorno CAD con el propósito de **v
 # Piñón Servo
 
 [Link al diseño en Fusion 360](https://a360.co/4cQ5PMJ)
-![alt text](Imágenes/image-8.png)
+![alt text](../../../docs/imagenes/image-8.png)
 
 El **piñón del servo** es la pieza encargada de transmitir el movimiento rotacional del servo hacia el engranaje principal del sistema de dirección.
 
@@ -59,7 +59,7 @@ Esta pieza fue **fabricada mediante impresión en resina**, lo que permite ajust
 # Engranaje Brazo
 
 [Link al diseño en Fusion 360](https://a360.co/4ux1Vie)
-![alt text](Imágenes/image-9.png)
+![alt text](../../../docs/imagenes/image-9.png)
 
 El **engranaje del brazo de dirección** es la pieza encargada de recibir el movimiento del piñón del servo y transmitirlo hacia el mecanismo de dirección.
 
@@ -76,7 +76,7 @@ Este componente se encuentra conectado al **brazo de dirección**, el cual convi
 # Brazo Direccion
 
 [Link al diseño en Fusion 360](https://a360.co/4ltEYrR)
-![alt text](Imágenes/image-10.png)
+![alt text](../../../docs/imagenes/image-10.png)
 
 El **brazo de dirección** es el elemento encargado de transmitir el movimiento proveniente del engranaje hacia las barras que controlan la orientación de las ruedas.
 
@@ -93,7 +93,7 @@ El diseño de esta pieza busca garantizar:
 # Barra Direccion
 
 [Link al diseño en Fusion 360](https://a360.co/4lwSNpI)
-![alt text](Imágenes/image-11.png)
+![alt text](../../../docs/imagenes/image-11.png)
 
 La **barra de dirección** conecta ambos lados del sistema Ackermann, permitiendo que el movimiento generado por el brazo de dirección se transmita a las ruedas delanteras.
 
@@ -110,7 +110,7 @@ Este comportamiento es fundamental para el funcionamiento del **principio de dir
 # Acople de la rueda con la barra derecha
 
 [Link al diseño en Fusion 360](https://a360.co/40ZcX1X)
-![alt text](Imágenes/image-12.png)
+![alt text](../../../docs/imagenes/image-12.png)
 
 El **acople derecho** conecta la barra de dirección con el soporte de la rueda derecha.
 
@@ -127,7 +127,7 @@ El diseño fue optimizado para permitir:
 # Acople de la rueda con la barra izquierda
 
 [Link al diseño en Fusion 360](https://a360.co/4brRZOb)
-![alt text](Imágenes/image-13.png)
+![alt text](../../../docs/imagenes/image-13.png)
 
 El **acople izquierdo** cumple la misma función que el acople derecho, pero en el lado opuesto del sistema de dirección.
 
@@ -140,7 +140,7 @@ El diseño de ambas piezas permite mantener la **simetría del sistema de direcc
 # Soporte Ackerman a la base
 
 [Link al diseño en Fusion 360](https://a360.co/4lu62Yf)
-![alt text](Imágenes/image-15.png)
+![alt text](../../../docs/imagenes/image-15.png)
 
 El **soporte del sistema Ackermann** es la pieza encargada de fijar el mecanismo de dirección a la base estructural del robot.
 
@@ -157,7 +157,7 @@ Esta pieza actúa como interfaz estructural entre el sistema de dirección y el 
 # Ensamblaje del sistema de dirección
 
 [Link al diseño en Fusion 360](https://a360.co/3NeH8PA)
-![alt text](Imágenes/image-14.png)
+![alt text](../../../docs/imagenes/image-14.png)
 
 El sistema completo de dirección se obtiene mediante el **ensamblaje de todos los componentes descritos anteriormente**.
 
