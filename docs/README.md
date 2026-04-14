@@ -23,7 +23,7 @@ docs/
 │
 │── imagenes/
 |
-|── matriz_de_documentos.xls
+|── MATRIZ_CONTROL_DE_DOCUMENTOS.xls
 │
 │── README.md
 ```
