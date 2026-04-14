@@ -20,7 +20,7 @@ Posteriormente, los componentes fueron **fabricados mediante impresión 3D**, lo
 # SG90 Servo Motor
 
 [Link al diseño en Fusion 360](https://a360.co/3P9kEA0)
-![alt text](../docs/imagenes/image-7.png)
+![alt text](![alt text](../../../docs/imagenes/image-7.png)
 
 El **servo motor SG90** es el actuador encargado de generar el movimiento del sistema de dirección.
 
