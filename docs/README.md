@@ -13,8 +13,13 @@ docs/
 │   ├── Propuesta formal.docx
 │
 │── bitacoras/
-│   ├── FI-F-001 BITÁCORA SEMANA X - PLANEACIÓN.pdf
-│   ├── FI-F-001 BITÁCORA SEMANA X - EJECUCIÓN.pdf
+│   ├── FI-F-001 BITÁCORA SEMANA 4 y 5 - PLANEACIÓN.pdf
+│   ├── FI-F-001 BITÁCORA SEMANA 4 y 5 - EJECUCIÓN.pdf
+│   ├── FI-F-001 BITÁCORA SEMANA 6 y 7 - PLANEACIÓN.pdf
+│   ├── FI-F-001 BITÁCORA SEMANA 6 y 7 - EJECUCIÓN.pdf
+│   ├── FI-F-001 BITÁCORA SEMANA 8 y 9 - PLANEACIÓN.pdf
+│   ├── FI-F-001 BITÁCORA SEMANA 8 y 9 - EJECUCIÓN.pdf
+│   ├── FI-F-001 BITÁCORA SEMANA 10 y 11 - PLANEACIÓN.pdf
 │
 │── imagenes/
 │
