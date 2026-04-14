@@ -12,7 +12,7 @@ GPIO.setup(TRIG, GPIO.OUT)
 GPIO.setup(ECHO, GPIO.IN)
 
 # Configurar serial (ajusta si es necesario)
-ser = serial.Serial('/dev/serial0', 9600, timeout=1)
+ser = serial.Serial('/dev/serial0', 115200, timeout=1)
 
 # Inicializar TRIG
 GPIO.output(TRIG, False)
