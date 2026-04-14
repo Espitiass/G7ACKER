@@ -54,7 +54,7 @@ El enfoque del proyecto combina:
 
 * Cámara IMX219 (visión artificial)
 * Sensor ultrasónico HC-SR04 (detección frontal de obstáculos)
-* 2 Sensores infrarrojos FC-51 (seguimiento de línea lateral)
+* 2 Sensores infrarrojos TCRT5000 (seguimiento de línea lateral)
 
 ### Actuadores
 
