@@ -22,6 +22,8 @@ docs/
 │   ├── FI-F-001 BITÁCORA SEMANA 10 y 11 - PLANEACIÓN.pdf
 │
 │── imagenes/
+|
+|── matriz_de_documentos.xls
 │
 │── README.md
 ```
@@ -54,11 +56,25 @@ Las bitácoras permiten llevar trazabilidad del progreso, identificar avances y 
 
 ### Imágenes
 
-Esta sección almacenará:
+Esta sección almacena:
 
 * Fotografías del robot
 * Evidencia del proceso de desarrollo
 * Recursos visuales de apoyo
+
+---
+
+### Matriz de documentos
+
+Archivo en formato Excel que centraliza el control de la documentación del proyecto.
+
+Incluye:
+
+* Registro de documentos generados
+* Seguimiento de entregas
+* Organización e inventario de la información
+
+Esta matriz permite mantener un control estructurado de todos los archivos asociados al proyecto y asegurar la trazabilidad documental.
 
 ---
 
