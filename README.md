@@ -21,7 +21,7 @@ El enfoque del proyecto combina:
 
 ## Demo del Sistema
 
-![Robot](docs/imagenes/FUNCIONAMIENTO_ULTRASONICO_CAMARA.mp4)
+![Funcionamiento del robot](docs/imagenes/demo.gif)
 
 ---
 
