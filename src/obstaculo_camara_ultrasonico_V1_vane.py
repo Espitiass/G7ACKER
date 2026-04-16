@@ -15,7 +15,7 @@ ser = serial.Serial('/dev/ttyUSB0', 115200, timeout=1)
 serial_lock = threading.Lock()
 time.sleep(2)
 
-# ─────────────────────────────────────────
+# ──────────────────────────a───────────────
 # ESTADO COMPARTIDO DEL ULTRASONIDO
 # ─────────────────────────────────────────
 obstaculo_cercano = False  # True si distancia <= 30 cm
@@ -50,22 +50,10 @@ def hilo_ultrasonido():
     global obstaculo_cercano
     while True:
         try:
-            distancias = []
-            for _ in range(3):
-                d = sensor.distance * 100
-                if 2 < d < 400:
-                    distancias.append(d)
-                time.sleep(0.05)
-
-            if distancias:
-                distancia = sum(distancias) / len(distancias)
-                obstaculo_cercano = distancia <= 30
-            else:
-                obstaculo_cercano = False
-
+            distancia = sensor.distance * 100  # metros → cm
+            obstaculo_cercano = distancia <= 30
         except Exception:
             obstaculo_cercano = False
-
         time.sleep(0.3)
 
 threading.Thread(target=hilo_ultrasonido, daemon=True).start()
@@ -101,17 +89,13 @@ def dibujar_linea_puntos(roi, mask, color):
 # ─────────────────────────────────────────
 # LÓGICA PRINCIPAL: CARRILES + DECISIÓN
 # ─────────────────────────────────────────
-
-ultimo_comando = None
 def enviar_comando(cmd):
-    global ultimo_comando
-    if cmd != ultimo_comando:
-        with serial_lock:
-            try:
-                ser.write((cmd + "\n").encode())
-                ultimo_comando = cmd
-            except Exception:
-                pass
+    """Envía un comando por serial con protección de hilo."""
+    with serial_lock:
+        try:
+            ser.write((cmd + "\n").encode())
+        except Exception:
+            pass
 
 def detectar_carriles(frame):
     global obstaculo_cercano
@@ -120,121 +104,70 @@ def detectar_carriles(frame):
     roi = frame[roi_y:, :].copy()
     roi_h, roi_w = roi.shape[:2]
 
-    # ─────────────────────────────────────────
-    # MÁSCARAS SOLO AMARILLO + ROJO
-    # ─────────────────────────────────────────
-    hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)  
+    hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
 
-    # Amarillo
-    mask_y = cv2.inRange(hsv, np.array([15, 80, 80]), np.array([38, 255, 255]))
-
-    # Rojo (dos rangos en HSV)
+    mask_y = cv2.inRange(hsv, np.array([15, 80, 80]),  np.array([38, 255, 255]))
+    mask_negro = cv2.inRange(hsv, np.array([0, 0, 0]), np.array([180, 225, 120]))
     mask_r1 = cv2.inRange(hsv, np.array([0, 100, 60]), np.array([10, 255, 255]))
     mask_r2 = cv2.inRange(hsv, np.array([165, 100, 60]), np.array([180, 255, 255]))
     mask_rojo = cv2.bitwise_or(mask_r1, mask_r2)
 
-    # Combinar máscaras
-    mask_total = cv2.bitwise_or(mask_y, mask_rojo)
+    tercio_izq = roi_w // 3
+    tercio_der = (roi_w * 2) // 3
 
-    # Limpieza
-    kernel = np.ones((5,5), np.uint8)
-    mask_total = cv2.morphologyEx(mask_total, cv2.MORPH_OPEN, kernel)
-    mask_total = cv2.morphologyEx(mask_total, cv2.MORPH_CLOSE, kernel)
+    mask_borde_izq = np.zeros_like(mask_negro)
+    mask_borde_izq[:, :tercio_izq] = mask_negro[:, :tercio_izq]
 
-    # ─────────────────────────────────────────
-    # CONTORNOS
-    # ─────────────────────────────────────────
-    contornos, _ = cv2.findContours(mask_total, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    contornos_filtrados = [c for c in contornos if cv2.contourArea(c) > 300]
+    mask_borde_der = np.zeros_like(mask_negro)
+    mask_borde_der[:, tercio_der:] = cv2.bitwise_or(
+        mask_negro[:, tercio_der:], mask_rojo[:, tercio_der:]
+    )
 
-    # Filtrar contornos grandes
-    centros_izq = []
-    centros_der = []
+    mask_amarillo_centro = np.zeros_like(mask_y)
+    mask_amarillo_centro[:, tercio_izq:tercio_der] = mask_y[:, tercio_izq:tercio_der]
+    if cv2.countNonZero(mask_amarillo_centro) < 100:
+        mask_amarillo_centro = mask_y
 
-    centro_imagen = roi_w // 2  # importante que esté antes
+    k_open  = np.ones((3, 3), np.uint8)
+    k_close = np.ones((5, 5), np.uint8)
+    def limpiar(m):
+        m = cv2.morphologyEx(m, cv2.MORPH_OPEN, k_open)
+        return cv2.morphologyEx(m, cv2.MORPH_CLOSE, k_close)
 
-    for c in contornos_filtrados:
-        cv2.drawContours(roi, [c], -1, (0, 255, 0), 2)
+    x_y = dibujar_linea_puntos(roi, limpiar(mask_amarillo_centro), (0, 220, 255))
+    x_l = dibujar_linea_puntos(roi, limpiar(mask_borde_izq), (255, 60, 60))
+    x_r = dibujar_linea_puntos(roi, limpiar(mask_borde_der), (0, 60, 220))
 
-        M = cv2.moments(c)
-        if M["m00"] != 0:
-            cx = int(M["m10"] / M["m00"])
-            cy = int(M["m01"] / M["m00"])
+    centro_imagen = roi_w // 2
 
-            # Separar izquierda / derecha
-            if cx < centro_imagen:
-                centros_izq.append(cx)
-                color = (255, 0, 0)  # azul
-            else:
-                centros_der.append(cx)
-                color = (0, 0, 255)  # rojo
-
-            cv2.circle(roi, (cx, cy), 5, color, -1)
-
-    # ─────────────────────────────────────────
-    # CENTRO DEL CARRIL (DINÁMICO)
-    # ─────────────────────────────────────────
-    if centros_izq and centros_der:
-        centro_carril = (int(np.mean(centros_izq)) + int(np.mean(centros_der))) // 2
-
-    elif centros_izq:
-        centro_carril = int(np.mean(centros_izq)) + 100
-
-    elif centros_der:
-        centro_carril = int(np.mean(centros_der)) - 100
-
+    if x_l is not None and x_r is not None:
+        centro_carril = (x_l + x_r) // 2
+    elif x_y is not None:
+        centro_carril = x_y
     else:
         centro_carril = None
 
-    # ─────────────────────────────────────────
-    # VISUALIZACIÓN
-    # ─────────────────────────────────────────
-
-    # Línea fija (referencia)
-    cv2.line(roi, (centro_imagen, 0), (centro_imagen, roi_h), (255, 255, 255), 2)
-
-    # Línea del carril detectado
-    if centro_carril is not None:
-        cv2.line(roi, (centro_carril, 0), (centro_carril, roi_h), (0, 255, 0), 2)
-
-    comando = "x"
-    direccion = "DEFAULT STOP"
-
     # ── DECISIÓN COMBINADA ──────────────────────────────────────
-    if obstaculo_cercano:
-        comando = "x"
-        direccion = "STOP - OBSTACULO"
-
-    elif centro_carril is None:
-        comando = "x"
-        direccion = "SIN LINEA"
-
-    else:
+    if centro_carril is not None:
         error = centro_imagen - centro_carril
-
         cv2.circle(roi, (centro_carril, roi_h//2), 6, (0, 255, 0), -1)
         cv2.circle(roi, (centro_imagen,  roi_h//2), 6, (255, 255, 255), -1)
         cv2.putText(frame, f"Error: {error}", (10, 110), 0, 0.7, (0, 255, 0), 2)
 
-        if -80 < error < 80:
+        en_carril = -600 < error < 600
+
+        if en_carril and not obstaculo_cercano:
+            # ✅ Centrado + sin obstáculo → ADELANTE
             comando = "a"
             direccion = "ADELANTE"
-
-        elif 80 <= error < 250:
-            comando = "i"
-            direccion = "IZQUIERDA SUAVE"
-
-        elif error >= 250:
-            comando = "i"
-            direccion = "IZQUIERDA FUERTE"
-
-        elif -250 < error <= -80:
-            comando = "d"
-            direccion = "DERECHA SUAVE"
-
-        elif error <= -250:
-            comando = "d"
-            direccion = "DERECHA FUERTE"
+        else:
+            # ❌ Fuera de carril O hay obstáculo → STOP
+            comando = "x"
+            direccion = "STOP - " + ("OBSTACULO" if obstaculo_cercano else "FUERA CARRIL")
+    else:
+        # ❌ Sin línea detectada → STOP
+        comando = "x"
+        direccion = "SIN LINEA"
 
     enviar_comando(comando)
 
