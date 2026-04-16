@@ -42,20 +42,33 @@ picam2.set_controls({
 # ─────────────────────────────────────────
 # ULTRASONIDO (GPIO)
 # ─────────────────────────────────────────
-from gpiozero import DistanceSensor
+import RPi.GPIO as GPIO
 
-sensor = DistanceSensor(echo=24, trigger=23)
-
-obstaculo_cercano = False
+TRIG = 23
+ECHO = 24
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(TRIG, GPIO.OUT)
+GPIO.setup(ECHO, GPIO.IN)
+GPIO.output(TRIG, False)
+time.sleep(1)
 
 def medir_distancia():
-    try:
-        distancia = sensor.distance * 100  # convertir a cm
-        if distancia == 0:
-            return 999  # sin lectura
-        return distancia
-    except:
-        return 999
+    GPIO.output(TRIG, True)
+    time.sleep(0.00001)
+    GPIO.output(TRIG, False)
+    inicio = time.time()
+    fin = time.time()
+    timeout = time.time() + 0.04  # 40 ms máximo
+    while GPIO.input(ECHO) == 0:
+        inicio = time.time()
+        if inicio > timeout:
+            return 999  # sin eco → asumir libre
+    timeout = time.time() + 0.04
+    while GPIO.input(ECHO) == 1:
+        fin = time.time()
+        if fin > timeout:
+            return 999
+    return (fin - inicio) * 34300 / 2
 
 def hilo_ultrasonido():
     global obstaculo_cercano
@@ -63,9 +76,8 @@ def hilo_ultrasonido():
         try:
             distancia = medir_distancia()
             obstaculo_cercano = distancia <= 30
-            print(f"Distancia: {distancia:.2f} cm | Obstáculo: {obstaculo_cercano}")
         except Exception:
-            obstaculo_cercano = False
+            obstaculo_cercano = False  # en caso de error, asumir libre
         time.sleep(0.3)
 
 threading.Thread(target=hilo_ultrasonido, daemon=True).start()
@@ -175,15 +187,15 @@ def detectar_carriles(frame):
         cv2.circle(roi, (centro_imagen,  roi_h//2), 6, (255, 255, 255), -1)
         cv2.putText(frame, f"Error: {error}", (10, 110), 0, 0.7, (0, 255, 0), 2)
 
-        if -50 < error < 50:
+        if -100 < error < 100:
             comando = "a"
             direccion = "ADELANTE"
 
-        elif error > 50:
+        elif error > 100:
             comando = "i"
             direccion = "IZQUIERDA"
 
-        elif error < -50:
+        elif error < -100:
             comando = "d"
             direccion = "DERECHA"
 
