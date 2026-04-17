@@ -224,17 +224,9 @@ def detectar_carriles(frame):
             comando = "i"
             direccion = "IZQUIERDA SUAVE"
 
-        elif error >= 250:
-            comando = "i"
-            direccion = "IZQUIERDA FUERTE"
-
         elif -250 < error <= -80:
             comando = "d"
             direccion = "DERECHA SUAVE"
-
-        elif error <= -250:
-            comando = "d"
-            direccion = "DERECHA FUERTE"
 
     enviar_comando(comando)
 
