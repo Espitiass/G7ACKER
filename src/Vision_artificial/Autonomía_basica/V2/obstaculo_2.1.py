@@ -116,7 +116,7 @@ def enviar_comando(cmd):
 def detectar_carriles(frame):
     global obstaculo_cercano
     altura, ancho = frame.shape[:2]
-    roi_y = int(altura * 0.75)
+    roi_y = int(altura * 0.7)
     roi = frame[roi_y:, :].copy()
     roi_h, roi_w = roi.shape[:2]
 
@@ -220,13 +220,13 @@ def detectar_carriles(frame):
             comando = "a"
             direccion = "ADELANTE"
 
-        elif 80 <= error < 250:
+        elif error >= 80:
             comando = "i"
-            direccion = "IZQUIERDA SUAVE"
+            direccion = "IZQUIERDA"
 
-        elif -250 < error <= -80:
+        elif error <= -80:
             comando = "d"
-            direccion = "DERECHA SUAVE"
+            direccion = "DERECHA"
 
     enviar_comando(comando)
 
