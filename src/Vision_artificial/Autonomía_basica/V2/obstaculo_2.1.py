@@ -216,15 +216,15 @@ def detectar_carriles(frame):
         cv2.circle(roi, (centro_imagen,  roi_h//2), 6, (255, 255, 255), -1)
         cv2.putText(frame, f"Error: {error}", (10, 110), 0, 0.7, (0, 255, 0), 2)
 
-        if -80 < error < 80:
+        if -100 < error < 100:
             comando = "a"
             direccion = "ADELANTE"
 
-        elif error >= 80:
+        elif error >= 100:
             comando = "i"
             direccion = "IZQUIERDA"
 
-        elif error <= -80:
+        elif error <= -120:
             comando = "d"
             direccion = "DERECHA"
 
