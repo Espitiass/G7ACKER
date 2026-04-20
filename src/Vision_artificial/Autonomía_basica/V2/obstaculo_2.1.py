@@ -224,7 +224,7 @@ def detectar_carriles(frame):
             comando = "i"
             direccion = "IZQUIERDA"
 
-        elif error <= -120:
+        elif error <= -110:
             comando = "d"
             direccion = "DERECHA"
 
