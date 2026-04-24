@@ -63,8 +63,7 @@ def hilo_ultrasonido():
             else:
                 obstaculo_cercano = False
 
-        except Exception as e:
-            print("Error ultrasonido:", e)
+        except Exception:
             obstaculo_cercano = False
 
         time.sleep(0.3)
@@ -104,9 +103,7 @@ def dibujar_linea_puntos(roi, mask, color):
 # ─────────────────────────────────────────
 
 ultimo_comando = None
-ultimo_comando_valido = "x"
-frames_sin_ambas_lineas = 0
-MAX_FRAMES_SIN_LINEAS = 10  # ajustable (clave)
+ultimo_error = 0
 def enviar_comando(cmd):
     global ultimo_comando
     if cmd != ultimo_comando:
@@ -118,7 +115,7 @@ def enviar_comando(cmd):
                 pass
 
 def detectar_carriles(frame):
-    global obstaculo_cercano
+    global obstaculo_cercano, ultimo_error
     altura, ancho = frame.shape[:2]
     roi_y = int(altura * 0.7)
     roi = frame[roi_y:, :].copy()
@@ -179,24 +176,8 @@ def detectar_carriles(frame):
     # CENTRO DEL CARRIL (DINÁMICO)
     # ─────────────────────────────────────────
     if centros_izq and centros_der:
-        frames_sin_ambas_lineas = 0
         centro_carril = (int(np.mean(centros_izq)) + int(np.mean(centros_der))) // 2
-
-
-    elif centros_izq or centros_der:
-        frames_sin_ambas_lineas += 1
-
-        if frames_sin_ambas_lineas < MAX_FRAMES_SIN_LINEAS:
-            centro_carril = None  # 🔥 NO recalculas todavía
-        else:
-            # ya pasó suficiente tiempo → ahora sí usa una línea
-            if centros_izq:
-                centro_carril = int(np.mean(centros_izq)) + 100
-            else:
-                centro_carril = int(np.mean(centros_der)) - 100
-
     else:
-        frames_sin_ambas_lineas += 1
         centro_carril = None
 
     # ─────────────────────────────────────────
@@ -213,17 +194,15 @@ def detectar_carriles(frame):
     comando = "x"
     direccion = "DEFAULT STOP"
 
-    # ── DECISIÓN COMBINADA ──────────────────────────────────────
+        # ── DECISIÓN COMBINADA ──────────────────────────────────────
     if obstaculo_cercano:
         comando = "x"
         direccion = "STOP - OBSTACULO"
 
-    elif centro_carril is None:
-        comando = ultimo_comando_valido  # 🔥 mantiene movimiento
-        direccion = "MEMORIA"
-
-    else:
+    elif centros_izq and centros_der:
+        # 👉 CASO NORMAL (DOS LÍNEAS)
         error = centro_imagen - centro_carril
+        ultimo_error = error
 
         cv2.circle(roi, (centro_carril, roi_h//2), 6, (0, 255, 0), -1)
         cv2.circle(roi, (centro_imagen,  roi_h//2), 6, (255, 255, 255), -1)
@@ -235,13 +214,31 @@ def detectar_carriles(frame):
 
         elif error >= 110:
             comando = "d"
+            direccion = "IZQUIERDA"
+
+        elif error <= -110:
+            comando = "i"
             direccion = "DERECHA"
 
-        elif error <= -100:
+    elif centros_der and not centros_izq:
+        error = ultimo_error  # 👈 usar memoria
+
+        if -110 < error < 110:
+            comando = "a"
+            direccion = "MEMORIA → ADELANTE"
+
+        elif error >= 110:
+            comando = "d"
+            direccion = "MEMORIA → IZQUIERDA"
+
+        elif error <= -110:
             comando = "i"
-            direccion = "IZQUIERDA"
-            
-        ultimo_comando_valido = comando
+            direccion = "MEMORIA → DERECHA"
+
+    else:
+        # 👉 SIN INFORMACIÓN
+        comando = "x"
+        direccion = "SIN LINEA"
 
     enviar_comando(comando)
 
