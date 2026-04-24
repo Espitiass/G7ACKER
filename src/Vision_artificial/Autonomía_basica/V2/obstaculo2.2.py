@@ -112,7 +112,7 @@ def detectar_carriles(frame):
     roi_h, roi_w = roi.shape[:2]
 
     # =========================
-    # SOLO MÁSCARA ROJA
+    # MÁSCARA ROJA
     # =========================
     hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
 
@@ -131,10 +131,8 @@ def detectar_carriles(frame):
 
     if not contornos:
         enviar_comando("x")
-        cv2.putText(frame, "SIN LINEA", (10, 140), 0, 0.7, (0,0,255), 2)
         return frame
 
-    # tomar el contorno más grande
     c = max(contornos, key=cv2.contourArea)
 
     if cv2.contourArea(c) < 300:
@@ -144,90 +142,90 @@ def detectar_carriles(frame):
     cv2.drawContours(roi, [c], -1, (0,255,0), 2)
 
     # =========================
-    # FIT LINE 🔥
+    # FIT LINE
     # =========================
     [vx, vy, x0, y0] = cv2.fitLine(c, cv2.DIST_L2, 0, 0.01, 0.01)
 
-    # evitar división por cero
-    if vx == 0:
-        vx = 0.0001
-
-    pendiente = vy / vx
-
-    # punto inferior de la línea (donde "toca" el robot)
-    y_eval = roi_h - 1
     if abs(vy) < 1e-5:
         vy = 1e-5
 
-    x_linea = int(x0 + (y_eval - y0) * (vx / vy))
+    # =========================
+    # DOS PUNTOS 🔥
+    # =========================
 
-    # dibujar línea detectada
+    # Punto cercano (abajo)
+    y_abajo = roi_h - 1
+    x_abajo = int(x0 + (y_abajo - y0) * (vx / vy))
+
+    # Punto lejano (arriba)
+    y_arriba = int(roi_h * 0.3)
+    x_arriba = int(x0 + (y_arriba - y0) * (vx / vy))
+
+    # Dibujar línea y puntos
     pt1 = (int(x0 - vx*1000), int(y0 - vy*1000))
     pt2 = (int(x0 + vx*1000), int(y0 + vy*1000))
     cv2.line(roi, pt1, pt2, (255,0,0), 2)
 
-    cv2.circle(roi, (x_linea, y_eval), 6, (0,255,255), -1)
-
-
+    cv2.circle(roi, (x_abajo, y_abajo), 6, (0,255,255), -1)
+    cv2.circle(roi, (x_arriba, y_arriba), 6, (255,255,0), -1)
 
     # =========================
-    # CONTROL 🔥 (VERSIÓN BUENA)
+    # CONTROL 🔥
     # =========================
 
-    # 🎯 zona donde quieres la línea (lado derecho)
-    x_min = int(roi_w * 0.55)
-    x_max = int(roi_w * 0.75)
+    # 🎯 zona lateral derecha
+    x_min = int(roi_w * 0.60)
+    x_max = int(roi_w * 0.80)
 
     cv2.line(roi, (x_min, 0), (x_min, roi_h), (255,255,255), 1)
     cv2.line(roi, (x_max, 0), (x_max, roi_h), (255,255,255), 1)
 
+    # 🔥 cambio de dirección REAL (sin perspectiva)
+    delta = x_arriba - x_abajo
+
     comando = "x"
     direccion = ""
 
-    # prioridad 1: obstáculo
     if obstaculo_cercano:
         comando = "x"
-        direccion = "STOP - OBSTACULO"
+        direccion = "STOP"
 
     else:
-
         # =========================
-        # 🔥 CURVAS (MANDAN)
+        # CURVAS REALES
         # =========================
-        if pendiente > 0.4:
-            comando = "i"   # curva hacia la izquierda → giras derecha
-            direccion = "CURVA IZQ"
+        if delta < -50:
+            comando = "i"
+            direccion = "CURVA IZQ REAL"
 
-        elif pendiente < -0.4:
-            comando = "d"   # curva hacia la derecha → giras izquierda
-            direccion = "CURVA DER"
+        elif delta > 50:
+            comando = "d"
+            direccion = "CURVA DER REAL"
 
         else:
             # =========================
-            # 🔥 POSICIÓN (SOLO CORRIGE)
+            # POSICIÓN LATERAL
             # =========================
-
-            if x_linea < x_min:
-                comando = "d"   # línea muy hacia el centro → te alejas
+            if x_abajo < x_min:
+                comando = "d"
                 direccion = "AJUSTE DER"
 
-            elif x_linea > x_max:
-                comando = "i"   # línea muy pegada → te separas
+            elif x_abajo > x_max:
+                comando = "i"
                 direccion = "AJUSTE IZQ"
 
             else:
-                comando = "a"   # PERFECTO → NO TOCAR
+                comando = "a"
                 direccion = "RECTO"
 
     enviar_comando(comando)
 
     # =========================
-    # DEBUG VISUAL
+    # DEBUG
     # =========================
-
-    cv2.putText(frame, f"Pendiente: {float(pendiente):.2f}", (10, 110), 0, 0.7, (0,255,0), 2)
-    cv2.putText(frame, direccion, (10, 170), 0, 0.7, (0,255,255), 2)
-    cv2.putText(frame, f"CMD: {comando}", (10, 200), 0, 0.7, (255,255,0), 2)
+    cv2.putText(frame, f"Delta: {delta}", (10,110), 0, 0.7, (0,255,0), 2)
+    cv2.putText(frame, direccion, (10,140), 0, 0.7, (0,255,255), 2)
+    cv2.putText(frame, f"CMD: {comando}", (10,170), 0, 0.7, (255,255,0), 2)
 
     frame[roi_y:, :] = roi
     return frame
