@@ -63,7 +63,8 @@ def hilo_ultrasonido():
             else:
                 obstaculo_cercano = False
 
-        except Exception:
+        except Exception as e:
+            print("Error ultrasonido:", e)
             obstaculo_cercano = False
 
         time.sleep(0.3)
@@ -87,6 +88,16 @@ def reducir_saturacion(frame):
     hsv[:,:,2] = np.clip(hsv[:,:,2], 0, 230)
     return cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
 
+def dibujar_linea_puntos(roi, mask, color):
+    h, _ = mask.shape
+    xs_detectados = []
+    for y in range(0, h, 3):
+        xs = np.where(mask[y] == 255)[0]
+        if len(xs) > 0:
+            x = xs[len(xs)//2]
+            xs_detectados.append(x)
+            cv2.circle(roi, (x, y), 3, color, -1)
+    return int(np.mean(xs_detectados)) if xs_detectados else None
 
 # ─────────────────────────────────────────
 # LÓGICA PRINCIPAL: CARRILES + DECISIÓN
@@ -105,131 +116,135 @@ def enviar_comando(cmd):
 
 def detectar_carriles(frame):
     global obstaculo_cercano
-
     altura, ancho = frame.shape[:2]
     roi_y = int(altura * 0.7)
     roi = frame[roi_y:, :].copy()
     roi_h, roi_w = roi.shape[:2]
 
-    # =========================
-    # MÁSCARA ROJA
-    # =========================
-    hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+    # ─────────────────────────────────────────
+    # MÁSCARAS SOLO AMARILLO + ROJO
+    # ─────────────────────────────────────────
+    hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)  
 
+    # Amarillo
+    mask_y = cv2.inRange(hsv, np.array([15, 80, 80]), np.array([38, 255, 255]))
+
+    # Rojo (dos rangos en HSV)
     mask_r1 = cv2.inRange(hsv, np.array([0, 100, 60]), np.array([10, 255, 255]))
     mask_r2 = cv2.inRange(hsv, np.array([165, 100, 60]), np.array([180, 255, 255]))
     mask_rojo = cv2.bitwise_or(mask_r1, mask_r2)
 
+    # Combinar máscaras
+    mask_total = cv2.bitwise_or(mask_y, mask_rojo)
+
+    # Limpieza
     kernel = np.ones((5,5), np.uint8)
-    mask_rojo = cv2.morphologyEx(mask_rojo, cv2.MORPH_OPEN, kernel)
-    mask_rojo = cv2.morphologyEx(mask_rojo, cv2.MORPH_CLOSE, kernel)
+    mask_total = cv2.morphologyEx(mask_total, cv2.MORPH_OPEN, kernel)
+    mask_total = cv2.morphologyEx(mask_total, cv2.MORPH_CLOSE, kernel)
 
-    # =========================
+    # ─────────────────────────────────────────
     # CONTORNOS
-    # =========================
-    contornos, _ = cv2.findContours(mask_rojo, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # ─────────────────────────────────────────
+    contornos, _ = cv2.findContours(mask_total, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contornos_filtrados = [c for c in contornos if cv2.contourArea(c) > 300]
 
-    if not contornos:
-        enviar_comando("x")
-        return frame
+    # Filtrar contornos grandes
+    centros_izq = []
+    centros_der = []
 
-    c = max(contornos, key=cv2.contourArea)
+    centro_imagen = roi_w // 2  # importante que esté antes
 
-    if cv2.contourArea(c) < 300:
-        enviar_comando("x")
-        return frame
+    for c in contornos_filtrados:
+        cv2.drawContours(roi, [c], -1, (0, 255, 0), 2)
 
-    cv2.drawContours(roi, [c], -1, (0,255,0), 2)
+        M = cv2.moments(c)
+        if M["m00"] != 0:
+            cx = int(M["m10"] / M["m00"])
+            cy = int(M["m01"] / M["m00"])
 
-    # =========================
-    # FIT LINE
-    # =========================
-    [vx, vy, x0, y0] = cv2.fitLine(c, cv2.DIST_L2, 0, 0.01, 0.01)
+            # Separar izquierda / derecha
+            if cx < centro_imagen:
+                centros_izq.append(cx)
+                color = (255, 0, 0)  # azul
+            else:
+                centros_der.append(cx)
+                color = (0, 0, 255)  # rojo
 
-    if abs(vy) < 1e-5:
-        vy = 1e-5
+            cv2.circle(roi, (cx, cy), 5, color, -1)
 
-    # =========================
-    # DOS PUNTOS 🔥
-    # =========================
+    # ─────────────────────────────────────────
+    # CENTRO DEL CARRIL (DINÁMICO)
+    # ─────────────────────────────────────────
+    if centros_izq and centros_der:
+        centro_carril = (int(np.mean(centros_izq)) + int(np.mean(centros_der))) // 2
 
-    # Punto cercano (abajo)
-    y_abajo = roi_h - 1
-    x_abajo = int(x0 + (y_abajo - y0) * (vx / vy))
+    elif centros_izq:
+        centro_carril = int(np.mean(centros_izq)) + 100
 
-    # Punto lejano (arriba)
-    y_arriba = int(roi_h * 0.3)
-    x_arriba = int(x0 + (y_arriba - y0) * (vx / vy))
-
-    # Dibujar línea y puntos
-    pt1 = (int(x0 - vx*1000), int(y0 - vy*1000))
-    pt2 = (int(x0 + vx*1000), int(y0 + vy*1000))
-    cv2.line(roi, pt1, pt2, (255,0,0), 2)
-
-    cv2.circle(roi, (x_abajo, y_abajo), 6, (0,255,255), -1)
-    cv2.circle(roi, (x_arriba, y_arriba), 6, (255,255,0), -1)
-
-    # =========================
-    # CONTROL 🔥
-    # =========================
-
-    # 🎯 zona lateral derecha
-    x_min = int(roi_w * 0.60)
-    x_max = int(roi_w * 0.80)
-
-    cv2.line(roi, (x_min, 0), (x_min, roi_h), (255,255,255), 1)
-    cv2.line(roi, (x_max, 0), (x_max, roi_h), (255,255,255), 1)
-
-    # 🔥 cambio de dirección REAL (sin perspectiva)
-    delta = x_arriba - x_abajo
-
-    comando = "x"
-    direccion = ""
-
-    if obstaculo_cercano:
-        comando = "x"
-        direccion = "STOP"
+    elif centros_der:
+        centro_carril = int(np.mean(centros_der)) - 100
 
     else:
-        # =========================
-        # CURVAS REALES
-        # =========================
-        if delta < -50:
-            comando = "i"
-            direccion = "CURVA IZQ REAL"
+        centro_carril = None
 
-        elif delta > 50:
+    # ─────────────────────────────────────────
+    # VISUALIZACIÓN
+    # ─────────────────────────────────────────
+
+    # Línea fija (referencia)
+    cv2.line(roi, (centro_imagen, 0), (centro_imagen, roi_h), (255, 255, 255), 2)
+
+    # Línea del carril detectado
+    if centro_carril is not None:
+        cv2.line(roi, (centro_carril, 0), (centro_carril, roi_h), (0, 255, 0), 2)
+
+    comando = "x"
+    direccion = "DEFAULT STOP"
+
+    # ── DECISIÓN COMBINADA ──────────────────────────────────────
+    if obstaculo_cercano:
+        comando = "x"
+        direccion = "STOP - OBSTACULO"
+
+    elif centro_carril is None:
+        comando = "x"
+        direccion = "SIN LINEA"
+
+    else:
+        error = centro_imagen - centro_carril
+
+        cv2.circle(roi, (centro_carril, roi_h//2), 6, (0, 255, 0), -1)
+        cv2.circle(roi, (centro_imagen,  roi_h//2), 6, (255, 255, 255), -1)
+        cv2.putText(frame, f"Error: {error}", (10, 110), 0, 0.7, (0, 255, 0), 2)
+
+        if -110 < error < 110:
+            comando = "a"
+            direccion = "ADELANTE"
+
+        elif error >= 110:
             comando = "d"
-            direccion = "CURVA DER REAL"
+            direccion = "IZQUIERDA"
 
-        else:
-            # =========================
-            # POSICIÓN LATERAL
-            # =========================
-            if x_abajo < x_min:
-                comando = "d"
-                direccion = "AJUSTE DER"
-
-            elif x_abajo > x_max:
-                comando = "i"
-                direccion = "AJUSTE IZQ"
-
-            else:
-                comando = "a"
-                direccion = "RECTO"
+        elif error <= -100:
+            comando = "i"
+            direccion = "DERECHA"
 
     enviar_comando(comando)
 
-    # =========================
-    # DEBUG
-    # =========================
-    cv2.putText(frame, f"Delta: {delta}", (10,110), 0, 0.7, (0,255,0), 2)
-    cv2.putText(frame, direccion, (10,140), 0, 0.7, (0,255,255), 2)
-    cv2.putText(frame, f"CMD: {comando}", (10,170), 0, 0.7, (255,255,0), 2)
+    # Indicador de ultrasonido en pantalla
+    color_obs = (0, 0, 255) if obstaculo_cercano else (0, 255, 0)
+    estado_obs = "OBS: SI" if obstaculo_cercano else "OBS: NO"
+    cv2.putText(frame, estado_obs,  (10, 80),  0, 0.7, color_obs, 2)
+    cv2.putText(frame, direccion,   (10, 140), 0, 0.7, (0, 255, 255), 2)
+    cv2.putText(frame, f"CMD: {comando}", (10, 170), 0, 0.7, (255, 255, 0), 2)
+    cv2.line(frame, (0, roi_y), (ancho, roi_y), (80, 80, 80), 1)
 
     frame[roi_y:, :] = roi
     return frame
 
+# ─────────────────────────────────────────
+# STREAM
+# ─────────────────────────────────────────
 def generar_frames():
     while True:
         frame = picam2.capture_array()
