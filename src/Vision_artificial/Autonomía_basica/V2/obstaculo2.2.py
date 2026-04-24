@@ -87,16 +87,6 @@ def reducir_saturacion(frame):
     hsv[:,:,2] = np.clip(hsv[:,:,2], 0, 230)
     return cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
 
-def dibujar_linea_puntos(roi, mask, color):
-    h, _ = mask.shape
-    xs_detectados = []
-    for y in range(0, h, 3):
-        xs = np.where(mask[y] == 255)[0]
-        if len(xs) > 0:
-            x = xs[len(xs)//2]
-            xs_detectados.append(x)
-            cv2.circle(roi, (x, y), 3, color, -1)
-    return int(np.mean(xs_detectados)) if xs_detectados else None
 
 # ─────────────────────────────────────────
 # LÓGICA PRINCIPAL: CARRILES + DECISIÓN
@@ -115,135 +105,133 @@ def enviar_comando(cmd):
 
 def detectar_carriles(frame):
     global obstaculo_cercano
+
     altura, ancho = frame.shape[:2]
     roi_y = int(altura * 0.7)
     roi = frame[roi_y:, :].copy()
     roi_h, roi_w = roi.shape[:2]
 
-    # ─────────────────────────────────────────
-    # MÁSCARAS SOLO AMARILLO + ROJO
-    # ─────────────────────────────────────────
-    hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)  
+    # =========================
+    # SOLO MÁSCARA ROJA
+    # =========================
+    hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
 
-    # Amarillo
-    mask_y = cv2.inRange(hsv, np.array([15, 80, 80]), np.array([38, 255, 255]))
-
-    # Rojo (dos rangos en HSV)
     mask_r1 = cv2.inRange(hsv, np.array([0, 100, 60]), np.array([10, 255, 255]))
     mask_r2 = cv2.inRange(hsv, np.array([165, 100, 60]), np.array([180, 255, 255]))
     mask_rojo = cv2.bitwise_or(mask_r1, mask_r2)
 
-    # Combinar máscaras
-    mask_total = cv2.bitwise_or(mask_y, mask_rojo)
-
-    # Limpieza
     kernel = np.ones((5,5), np.uint8)
-    mask_total = cv2.morphologyEx(mask_total, cv2.MORPH_OPEN, kernel)
-    mask_total = cv2.morphologyEx(mask_total, cv2.MORPH_CLOSE, kernel)
+    mask_rojo = cv2.morphologyEx(mask_rojo, cv2.MORPH_OPEN, kernel)
+    mask_rojo = cv2.morphologyEx(mask_rojo, cv2.MORPH_CLOSE, kernel)
 
-    # ─────────────────────────────────────────
+    # =========================
     # CONTORNOS
-    # ─────────────────────────────────────────
-    contornos, _ = cv2.findContours(mask_total, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    contornos_filtrados = [c for c in contornos if cv2.contourArea(c) > 300]
+    # =========================
+    contornos, _ = cv2.findContours(mask_rojo, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    # Filtrar contornos grandes
-    centros_izq = []
-    centros_der = []
+    if not contornos:
+        enviar_comando("x")
+        cv2.putText(frame, "SIN LINEA", (10, 140), 0, 0.7, (0,0,255), 2)
+        return frame
 
-    centro_imagen = roi_w // 2  # importante que esté antes
+    # tomar el contorno más grande
+    c = max(contornos, key=cv2.contourArea)
 
-    for c in contornos_filtrados:
-        cv2.drawContours(roi, [c], -1, (0, 255, 0), 2)
+    if cv2.contourArea(c) < 300:
+        enviar_comando("x")
+        return frame
 
-        M = cv2.moments(c)
-        if M["m00"] != 0:
-            cx = int(M["m10"] / M["m00"])
-            cy = int(M["m01"] / M["m00"])
+    cv2.drawContours(roi, [c], -1, (0,255,0), 2)
 
-            # Separar izquierda / derecha
-            if cx < centro_imagen:
-                centros_izq.append(cx)
-                color = (255, 0, 0)  # azul
-            else:
-                centros_der.append(cx)
-                color = (0, 0, 255)  # rojo
+    # =========================
+    # FIT LINE 🔥
+    # =========================
+    [vx, vy, x0, y0] = cv2.fitLine(c, cv2.DIST_L2, 0, 0.01, 0.01)
 
-            cv2.circle(roi, (cx, cy), 5, color, -1)
+    # evitar división por cero
+    if vx == 0:
+        vx = 0.0001
 
-    # ─────────────────────────────────────────
-    # CENTRO DEL CARRIL (DINÁMICO)
-    # ─────────────────────────────────────────
-    if centros_izq and centros_der:
-        centro_carril = (int(np.mean(centros_izq)) + int(np.mean(centros_der))) // 2
+    pendiente = vy / vx
 
-    elif centros_izq:
-        centro_carril = int(np.mean(centros_izq)) + 100
+    # punto inferior de la línea (donde "toca" el robot)
+    y_eval = roi_h - 1
+    if abs(vy) < 1e-5:
+        vy = 1e-5
 
-    elif centros_der:
-        centro_carril = int(np.mean(centros_der)) - 100
+    x_linea = int(x0 + (y_eval - y0) * (vx / vy))
 
-    else:
-        centro_carril = None
+    # dibujar línea detectada
+    pt1 = (int(x0 - vx*1000), int(y0 - vy*1000))
+    pt2 = (int(x0 + vx*1000), int(y0 + vy*1000))
+    cv2.line(roi, pt1, pt2, (255,0,0), 2)
 
-    # ─────────────────────────────────────────
-    # VISUALIZACIÓN
-    # ─────────────────────────────────────────
+    cv2.circle(roi, (x_linea, y_eval), 6, (0,255,255), -1)
 
-    # Línea fija (referencia)
-    cv2.line(roi, (centro_imagen, 0), (centro_imagen, roi_h), (255, 255, 255), 2)
 
-    # Línea del carril detectado
-    if centro_carril is not None:
-        cv2.line(roi, (centro_carril, 0), (centro_carril, roi_h), (0, 255, 0), 2)
+
+    # =========================
+    # CONTROL 🔥 (VERSIÓN BUENA)
+    # =========================
+
+    # 🎯 zona donde quieres la línea (lado derecho)
+    x_min = int(roi_w * 0.55)
+    x_max = int(roi_w * 0.75)
+
+    cv2.line(roi, (x_min, 0), (x_min, roi_h), (255,255,255), 1)
+    cv2.line(roi, (x_max, 0), (x_max, roi_h), (255,255,255), 1)
 
     comando = "x"
-    direccion = "DEFAULT STOP"
+    direccion = ""
 
-    # ── DECISIÓN COMBINADA ──────────────────────────────────────
+    # prioridad 1: obstáculo
     if obstaculo_cercano:
         comando = "x"
         direccion = "STOP - OBSTACULO"
 
-    elif centro_carril is None:
-        comando = "x"
-        direccion = "SIN LINEA"
-
     else:
-        error = centro_imagen - centro_carril
 
-        cv2.circle(roi, (centro_carril, roi_h//2), 6, (0, 255, 0), -1)
-        cv2.circle(roi, (centro_imagen,  roi_h//2), 6, (255, 255, 255), -1)
-        cv2.putText(frame, f"Error: {error}", (10, 110), 0, 0.7, (0, 255, 0), 2)
+        # =========================
+        # 🔥 CURVAS (MANDAN)
+        # =========================
+        if pendiente > 0.4:
+            comando = "i"   # curva hacia la izquierda → giras derecha
+            direccion = "CURVA IZQ"
 
-        if -100 < error < 110:
-            comando = "a"
-            direccion = "ADELANTE"
+        elif pendiente < -0.4:
+            comando = "d"   # curva hacia la derecha → giras izquierda
+            direccion = "CURVA DER"
 
-        elif error >= 100:
-            comando = "i"
-            direccion = "IZQUIERDA"
+        else:
+            # =========================
+            # 🔥 POSICIÓN (SOLO CORRIGE)
+            # =========================
 
-        elif error <= -110:
-            comando = "d"
-            direccion = "DERECHA"
+            if x_linea < x_min:
+                comando = "d"   # línea muy hacia el centro → te alejas
+                direccion = "AJUSTE DER"
+
+            elif x_linea > x_max:
+                comando = "i"   # línea muy pegada → te separas
+                direccion = "AJUSTE IZQ"
+
+            else:
+                comando = "a"   # PERFECTO → NO TOCAR
+                direccion = "RECTO"
 
     enviar_comando(comando)
 
-    # Indicador de ultrasonido en pantalla
-    color_obs = (0, 0, 255) if obstaculo_cercano else (0, 255, 0)
-    estado_obs = "OBS: SI" if obstaculo_cercano else "OBS: NO"
-    cv2.putText(frame, estado_obs,  (10, 80),  0, 0.7, color_obs, 2)
-    cv2.putText(frame, direccion,   (10, 140), 0, 0.7, (0, 255, 255), 2)
-    cv2.putText(frame, f"CMD: {comando}", (10, 170), 0, 0.7, (255, 255, 0), 2)
-    cv2.line(frame, (0, roi_y), (ancho, roi_y), (80, 80, 80), 1)
+    # =========================
+    # DEBUG VISUAL
+    # =========================
+
+    cv2.putText(frame, f"Pendiente: {float(pendiente):.2f}", (10, 110), 0, 0.7, (0,255,0), 2)
+    cv2.putText(frame, direccion, (10, 170), 0, 0.7, (0,255,255), 2)
+    cv2.putText(frame, f"CMD: {comando}", (10, 200), 0, 0.7, (255,255,0), 2)
 
     frame[roi_y:, :] = roi
     return frame
 
-# ─────────────────────────────────────────
-# STREAM
-# ─────────────────────────────────────────
 def generar_frames():
     while True:
         frame = picam2.capture_array()
