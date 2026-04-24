@@ -104,6 +104,9 @@ def dibujar_linea_puntos(roi, mask, color):
 # ─────────────────────────────────────────
 
 ultimo_comando = None
+ultimo_comando_valido = "x"
+frames_sin_ambas_lineas = 0
+MAX_FRAMES_SIN_LINEAS = 10  # ajustable (clave)
 def enviar_comando(cmd):
     global ultimo_comando
     if cmd != ultimo_comando:
@@ -176,15 +179,24 @@ def detectar_carriles(frame):
     # CENTRO DEL CARRIL (DINÁMICO)
     # ─────────────────────────────────────────
     if centros_izq and centros_der:
+        frames_sin_ambas_lineas = 0
         centro_carril = (int(np.mean(centros_izq)) + int(np.mean(centros_der))) // 2
 
-    elif centros_izq:
-        centro_carril = int(np.mean(centros_izq)) + 100
 
-    elif centros_der:
-        centro_carril = int(np.mean(centros_der)) - 100
+    elif centros_izq or centros_der:
+        frames_sin_ambas_lineas += 1
+
+        if frames_sin_ambas_lineas < MAX_FRAMES_SIN_LINEAS:
+            centro_carril = None  # 🔥 NO recalculas todavía
+        else:
+            # ya pasó suficiente tiempo → ahora sí usa una línea
+            if centros_izq:
+                centro_carril = int(np.mean(centros_izq)) + 100
+            else:
+                centro_carril = int(np.mean(centros_der)) - 100
 
     else:
+        frames_sin_ambas_lineas += 1
         centro_carril = None
 
     # ─────────────────────────────────────────
@@ -207,8 +219,8 @@ def detectar_carriles(frame):
         direccion = "STOP - OBSTACULO"
 
     elif centro_carril is None:
-        comando = "x"
-        direccion = "SIN LINEA"
+        comando = ultimo_comando_valido  # 🔥 mantiene movimiento
+        direccion = "MEMORIA"
 
     else:
         error = centro_imagen - centro_carril
@@ -223,11 +235,13 @@ def detectar_carriles(frame):
 
         elif error >= 110:
             comando = "d"
-            direccion = "IZQUIERDA"
+            direccion = "DERECHA"
 
         elif error <= -100:
             comando = "i"
-            direccion = "DERECHA"
+            direccion = "IZQUIERDA"
+            
+        ultimo_comando_valido = comando
 
     enviar_comando(comando)
 
