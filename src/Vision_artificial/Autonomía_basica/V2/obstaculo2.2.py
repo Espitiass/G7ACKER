@@ -115,9 +115,9 @@ def enviar_comando(cmd):
                 pass
 
 def detectar_carriles(frame):
-    global obstaculo_cercano
+    global obstaculo_cercano, ancho_carril_confiable
     altura, ancho = frame.shape[:2]
-    roi_y = int(altura * 0.7)
+    roi_y = int(altura * 0.6)
     roi = frame[roi_y:, :].copy()
     roi_h, roi_w = roi.shape[:2]
 
@@ -181,7 +181,7 @@ def detectar_carriles(frame):
         error_actual = centro_imagen - centro_carril
 
         # Solo guardar ancho si vamos centrados (recta)
-        if -110 < error_actual < 110:
+        if -100 < error_actual < 100:
             ancho_carril_confiable = ancho_actual
 
     elif centros_izq:
@@ -222,19 +222,25 @@ def detectar_carriles(frame):
     else:
         error = centro_imagen - centro_carril
 
+        # Ajustar umbral según contexto
+        if centros_izq and centros_der:
+            umbral = 110  # recta: preciso
+        elif centros_der:
+            umbral = 180  # solo roja: más permisivo
+        else:
+            umbral = 110  # solo amarilla: normal
+
         cv2.circle(roi, (centro_carril, roi_h//2), 6, (0, 255, 0), -1)
         cv2.circle(roi, (centro_imagen,  roi_h//2), 6, (255, 255, 255), -1)
         cv2.putText(frame, f"Error: {error}", (10, 110), 0, 0.7, (0, 255, 0), 2)
 
-        if -110 < error < 110:
+        if -umbral < error < umbral:
             comando = "a"
             direccion = "ADELANTE"
-
-        elif error >= 110:
+        elif error >= umbral:
             comando = "d"
             direccion = "IZQUIERDA"
-
-        elif error <= -110:
+        elif error <= -umbral:
             comando = "i"
             direccion = "DERECHA"
 
