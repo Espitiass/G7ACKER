@@ -114,7 +114,7 @@ def enviar_comando(cmd):
                 pass
 
 def detectar_carriles(frame):
-    OFFSET_ROJO = 140  # 🔥 AJUSTAR (empieza entre 120–180)
+    OFFSET_ROJO = int(roi_w * 0.18)  # 🔥 AJUSTAR (empieza entre 120–180)
     global obstaculo_cercano
     altura, ancho = frame.shape[:2]
     roi_y = int(altura * 0.7)
@@ -182,7 +182,15 @@ def detectar_carriles(frame):
     elif centros_der:
         # 🔴 SOLO ROJO → usar como borde derecho con OFFSET
         x_r = int(np.mean(centros_der))
+
+        # Offset dinámico + forzado mínimo
         centro_carril = x_r - OFFSET_ROJO
+
+        # 🔥 FORZAR a que el carril quede a la izquierda del centro real
+        limite_izq = int(roi_w * 0.45)
+
+        if centro_carril > limite_izq:
+            centro_carril = limite_izq
 
     elif centros_izq:
         # 🔵 SOLO IZQUIERDA → opcional (puedes dejarlo o quitarlo)
@@ -217,7 +225,7 @@ def detectar_carriles(frame):
         direccion = "SIN LINEA"
 
     else:
-        error = centro_imagen - centro_carril
+        error = (roi_w * 0.3) - x_r
 
         cv2.circle(roi, (centro_carril, roi_h//2), 6, (0, 255, 0), -1)
         cv2.circle(roi, (centro_imagen,  roi_h//2), 6, (255, 255, 255), -1)
