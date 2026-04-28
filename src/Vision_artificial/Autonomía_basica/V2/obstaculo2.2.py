@@ -117,7 +117,7 @@ def enviar_comando(cmd):
 def detectar_carriles(frame):
     global obstaculo_cercano, ancho_carril_confiable
     altura, ancho = frame.shape[:2]
-    roi_y = int(altura * 0.6)
+    roi_y = int(altura * 0.65)
     roi = frame[roi_y:, :].copy()
     roi_h, roi_w = roi.shape[:2]
 
@@ -224,11 +224,16 @@ def detectar_carriles(frame):
 
         # Ajustar umbral según contexto
         if centros_izq and centros_der:
-            umbral = 110  # recta: preciso
+            # Si el error es pequeño → recta → umbral amplio
+            # Si el error es grande → curva → umbral estrecho (reacciona antes)
+            if -60 < error < 60:
+                umbral = 110  # recta
+            else:
+                umbral = 70   # curva: más agresivo
         elif centros_der:
-            umbral = 180  # solo roja: más permisivo
+            umbral = 180  # solo roja: permisivo
         else:
-            umbral = 110  # solo amarilla: normal
+            umbral = 110  # solo amarilla
 
         cv2.circle(roi, (centro_carril, roi_h//2), 6, (0, 255, 0), -1)
         cv2.circle(roi, (centro_imagen,  roi_h//2), 6, (255, 255, 255), -1)
