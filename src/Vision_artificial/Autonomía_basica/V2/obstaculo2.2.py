@@ -19,6 +19,7 @@ time.sleep(2)
 # ESTADO COMPARTIDO DEL ULTRASONIDO
 # ─────────────────────────────────────────
 obstaculo_cercano = False  # True si distancia <= 30 cm
+ancho_carril_confiable = None  # Se actualiza solo en recta con ambas líneas
 
 # ─────────────────────────────────────────
 # CÁMARA
@@ -114,7 +115,6 @@ def enviar_comando(cmd):
                 pass
 
 def detectar_carriles(frame):
-    OFFSET_ROJO = int(roi_w * 0.18)  # 🔥 AJUSTAR (empieza entre 120–180)
     global obstaculo_cercano
     altura, ancho = frame.shape[:2]
     roi_y = int(altura * 0.7)
@@ -176,26 +176,22 @@ def detectar_carriles(frame):
     # CENTRO DEL CARRIL (DINÁMICO)
     # ─────────────────────────────────────────
     if centros_izq and centros_der:
-        # 🟢 Caso ideal → carril completo
         centro_carril = (int(np.mean(centros_izq)) + int(np.mean(centros_der))) // 2
+        ancho_actual = int(np.mean(centros_der)) - int(np.mean(centros_izq))
+        error_actual = centro_imagen - centro_carril
 
-    elif centros_der:
-        # 🔴 SOLO ROJO → usar como borde derecho con OFFSET
-        x_r = int(np.mean(centros_der))
-
-        # Offset dinámico + forzado mínimo
-        centro_carril = x_r - OFFSET_ROJO
-
-        # 🔥 FORZAR a que el carril quede a la izquierda del centro real
-        limite_izq = int(roi_w * 0.45)
-
-        if centro_carril > limite_izq:
-            centro_carril = limite_izq
+        # Solo guardar ancho si vamos centrados (recta)
+        if -110 < error_actual < 110:
+            ancho_carril_confiable = ancho_actual
 
     elif centros_izq:
-        # 🔵 SOLO IZQUIERDA → opcional (puedes dejarlo o quitarlo)
-        x_l = int(np.mean(centros_izq))
-        centro_carril = x_l + OFFSET_ROJO
+        centro_carril = int(np.mean(centros_izq)) + 100
+
+    elif centros_der:
+        if ancho_carril_confiable is not None:
+            centro_carril = int(np.mean(centros_der)) - (ancho_carril_confiable // 2)
+        else:
+            centro_carril = int(np.mean(centros_der)) - 100  # fallback
 
     else:
         centro_carril = None
@@ -210,7 +206,6 @@ def detectar_carriles(frame):
     # Línea del carril detectado
     if centro_carril is not None:
         cv2.line(roi, (centro_carril, 0), (centro_carril, roi_h), (0, 255, 0), 2)
-        cv2.circle(roi, (centro_carril, roi_h//2), 8, (0, 255, 0), -1)
 
     comando = "x"
     direccion = "DEFAULT STOP"
@@ -225,7 +220,7 @@ def detectar_carriles(frame):
         direccion = "SIN LINEA"
 
     else:
-        error = (roi_w * 0.3) - x_r
+        error = centro_imagen - centro_carril
 
         cv2.circle(roi, (centro_carril, roi_h//2), 6, (0, 255, 0), -1)
         cv2.circle(roi, (centro_imagen,  roi_h//2), 6, (255, 255, 255), -1)
