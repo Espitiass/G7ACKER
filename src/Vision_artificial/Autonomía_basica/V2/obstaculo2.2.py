@@ -103,7 +103,6 @@ def dibujar_linea_puntos(roi, mask, color):
 # ─────────────────────────────────────────
 
 ultimo_comando = None
-ultimo_error = 0
 def enviar_comando(cmd):
     global ultimo_comando
     if cmd != ultimo_comando:
@@ -115,7 +114,8 @@ def enviar_comando(cmd):
                 pass
 
 def detectar_carriles(frame):
-    global obstaculo_cercano, ultimo_error
+    OFFSET_ROJO = 140  # 🔥 AJUSTAR (empieza entre 120–180)
+    global obstaculo_cercano
     altura, ancho = frame.shape[:2]
     roi_y = int(altura * 0.7)
     roi = frame[roi_y:, :].copy()
@@ -176,7 +176,19 @@ def detectar_carriles(frame):
     # CENTRO DEL CARRIL (DINÁMICO)
     # ─────────────────────────────────────────
     if centros_izq and centros_der:
+        # 🟢 Caso ideal → carril completo
         centro_carril = (int(np.mean(centros_izq)) + int(np.mean(centros_der))) // 2
+
+    elif centros_der:
+        # 🔴 SOLO ROJO → usar como borde derecho con OFFSET
+        x_r = int(np.mean(centros_der))
+        centro_carril = x_r - OFFSET_ROJO
+
+    elif centros_izq:
+        # 🔵 SOLO IZQUIERDA → opcional (puedes dejarlo o quitarlo)
+        x_l = int(np.mean(centros_izq))
+        centro_carril = x_l + OFFSET_ROJO
+
     else:
         centro_carril = None
 
@@ -190,19 +202,22 @@ def detectar_carriles(frame):
     # Línea del carril detectado
     if centro_carril is not None:
         cv2.line(roi, (centro_carril, 0), (centro_carril, roi_h), (0, 255, 0), 2)
+        cv2.circle(roi, (centro_carril, roi_h//2), 8, (0, 255, 0), -1)
 
     comando = "x"
     direccion = "DEFAULT STOP"
 
-        # ── DECISIÓN COMBINADA ──────────────────────────────────────
+    # ── DECISIÓN COMBINADA ──────────────────────────────────────
     if obstaculo_cercano:
         comando = "x"
         direccion = "STOP - OBSTACULO"
 
-    elif centros_izq and centros_der:
-        # 👉 CASO NORMAL (DOS LÍNEAS)
+    elif centro_carril is None:
+        comando = "x"
+        direccion = "SIN LINEA"
+
+    else:
         error = centro_imagen - centro_carril
-        ultimo_error = error
 
         cv2.circle(roi, (centro_carril, roi_h//2), 6, (0, 255, 0), -1)
         cv2.circle(roi, (centro_imagen,  roi_h//2), 6, (255, 255, 255), -1)
@@ -219,26 +234,6 @@ def detectar_carriles(frame):
         elif error <= -110:
             comando = "i"
             direccion = "DERECHA"
-
-    elif centros_der and not centros_izq:
-        error = ultimo_error  # 👈 usar memoria
-
-        if -110 < error < 110:
-            comando = "a"
-            direccion = "MEMORIA → ADELANTE"
-
-        elif error >= 110:
-            comando = "d"
-            direccion = "MEMORIA → IZQUIERDA"
-
-        elif error <= -110:
-            comando = "i"
-            direccion = "MEMORIA → DERECHA"
-
-    else:
-        # 👉 SIN INFORMACIÓN
-        comando = "x"
-        direccion = "SIN LINEA"
 
     enviar_comando(comando)
 
