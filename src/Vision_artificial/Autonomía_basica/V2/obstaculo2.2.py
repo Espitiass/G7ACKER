@@ -19,7 +19,7 @@ time.sleep(2)
 # ESTADO COMPARTIDO DEL ULTRASONIDO
 # ─────────────────────────────────────────
 obstaculo_cercano = False  # True si distancia <= 30 cm
-ancho_carril_confiable = None  # Se actualiza solo en recta con ambas líneas
+ancho_carril_confiable = 350  # Valor inicial (se ajusta automáticamente)
 
 # ─────────────────────────────────────────
 # CÁMARA
@@ -173,26 +173,22 @@ def detectar_carriles(frame):
             cv2.circle(roi, (cx, cy), 5, color, -1)
 
     # ─────────────────────────────────────────
-    # CENTRO DEL CARRIL (DINÁMICO)
+    # CENTRO DEL CARRIL (SIEMPRE REFERIDO A LA LÍNEA ROJA)
     # ─────────────────────────────────────────
     if centros_izq and centros_der:
-        centro_carril = (int(np.mean(centros_izq)) + int(np.mean(centros_der))) // 2
+        # Ambas líneas visibles: medir ancho real y actualizar si vamos centrados
         ancho_actual = int(np.mean(centros_der)) - int(np.mean(centros_izq))
-        error_actual = centro_imagen - centro_carril
-
-        # Solo guardar ancho si vamos centrados (recta)
-        if -100 < error_actual < 100:
+        centro_temp = (int(np.mean(centros_izq)) + int(np.mean(centros_der))) // 2
+        error_temp = centro_imagen - centro_temp
+        if -100 < error_temp < 100:
             ancho_carril_confiable = ancho_actual
 
+    # Calcular el centro SIEMPRE basado en la roja y el ancho guardado
+    if centros_der:
+        centro_carril = int(np.mean(centros_der)) - (ancho_carril_confiable // 2)
     elif centros_izq:
-        centro_carril = int(np.mean(centros_izq)) + 100
-
-    elif centros_der:
-        if ancho_carril_confiable is not None:
-            centro_carril = int(np.mean(centros_der)) - (ancho_carril_confiable // 2)
-        else:
-            centro_carril = int(np.mean(centros_der)) - 100  # fallback
-
+        # Si solo queda la amarilla (raro, pero por si acaso)
+        centro_carril = int(np.mean(centros_izq)) + (ancho_carril_confiable // 2)
     else:
         centro_carril = None
 
@@ -222,32 +218,19 @@ def detectar_carriles(frame):
     else:
         error = centro_imagen - centro_carril
 
-        # Ajustar umbral según contexto
-        if centros_izq and centros_der:
-            # Si el error es pequeño → recta → umbral amplio
-            # Si el error es grande → curva → umbral estrecho (reacciona antes)
-            if -100 < error < 100:
-                umbral = 110  # recta
-            else:
-                umbral = 40   # curva: más agresivo
-        elif centros_der:
-            umbral = 170  # solo roja: permisivo
-        else:
-            umbral = 110  # solo amarilla
-
         cv2.circle(roi, (centro_carril, roi_h//2), 6, (0, 255, 0), -1)
         cv2.circle(roi, (centro_imagen,  roi_h//2), 6, (255, 255, 255), -1)
         cv2.putText(frame, f"Error: {error}", (10, 110), 0, 0.7, (0, 255, 0), 2)
 
-        if -umbral < error < umbral:
+        if -100 < error < 100:
             comando = "a"
             direccion = "ADELANTE"
-        elif error >= umbral:
+        elif error >= 100:
             comando = "d"
-            direccion = "DERECHA"
-        elif error <= -umbral:
-            comando = "i"
             direccion = "IZQUIERDA"
+        elif error <= -100:
+            comando = "i"
+            direccion = "DERECHA"
 
     enviar_comando(comando)
 
