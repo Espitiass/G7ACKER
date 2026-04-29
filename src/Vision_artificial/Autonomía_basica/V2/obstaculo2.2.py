@@ -117,7 +117,7 @@ def enviar_comando(cmd):
 def detectar_carriles(frame):
     global obstaculo_cercano, ancho_carril_confiable
     altura, ancho = frame.shape[:2]
-    roi_y = int(altura * 0.68)
+    roi_y = int(altura * 0.7)
     roi = frame[roi_y:, :].copy()
     roi_h, roi_w = roi.shape[:2]
 
@@ -185,8 +185,8 @@ def detectar_carriles(frame):
             ancho_carril_confiable = ancho_actual
 
         # Compensar perspectiva en curvas: sesgar centro hacia la línea roja (derecha)
-        if abs(error_actual) > 60:   # Estamos en curva
-            centro_carril += 35      # Desplazar 25 px a la derecha
+        if abs(error_actual) > 120:   # Estamos en curva
+            centro_carril += 60      # Desplazar 25 px a la derecha
 
     elif centros_izq:
         centro_carril = int(np.mean(centros_izq)) + 100
@@ -248,10 +248,10 @@ def detectar_carriles(frame):
             direccion = "ADELANTE"
         elif error >= umbral:
             comando = "d"
-            direccion = "IZQUIERDA"
+            direccion = "DERECHA"
         elif error <= -umbral:
             comando = "i"
-            direccion = "DERECHA"
+            direccion = "IZQUIERDA"
 
     enviar_comando(comando)
 
