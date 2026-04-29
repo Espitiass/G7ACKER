@@ -184,10 +184,6 @@ def detectar_carriles(frame):
         if -100 < error_actual < 100:
             ancho_carril_confiable = ancho_actual
 
-        # Compensar perspectiva en curvas: sesgar centro hacia la línea roja (derecha)
-        if abs(error_actual) > 120:   # Estamos en curva
-            centro_carril += 60      # Desplazar 25 px a la derecha
-
     elif centros_izq:
         centro_carril = int(np.mean(centros_izq)) + 100
 
@@ -230,12 +226,12 @@ def detectar_carriles(frame):
         if centros_izq and centros_der:
             # Si el error es pequeño → recta → umbral amplio
             # Si el error es grande → curva → umbral estrecho (reacciona antes)
-            if -60 < error < 60:
+            if -100 < error < 100:
                 umbral = 110  # recta
             else:
-                umbral = 30   # curva: más agresivo
+                umbral = 40   # curva: más agresivo
         elif centros_der:
-            umbral = 180  # solo roja: permisivo
+            umbral = 170  # solo roja: permisivo
         else:
             umbral = 110  # solo amarilla
 
