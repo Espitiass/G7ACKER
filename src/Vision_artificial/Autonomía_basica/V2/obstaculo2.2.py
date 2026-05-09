@@ -173,22 +173,24 @@ def detectar_carriles(frame):
             cv2.circle(roi, (cx, cy), 5, color, -1)
 
     # ─────────────────────────────────────────
-    # CENTRO DEL CARRIL (SIEMPRE REFERIDO A LA LÍNEA ROJA)
+    # CENTRO DEL CARRIL (DINÁMICO)
     # ─────────────────────────────────────────
     if centros_izq and centros_der:
-        # Ambas líneas visibles: medir ancho real y actualizar si vamos centrados
+        # Ambas líneas visibles: usar el promedio (curvas y rectas con amarilla)
+        centro_carril = (int(np.mean(centros_izq)) + int(np.mean(centros_der))) // 2
+        # Medir el ancho real y guardarlo si vamos centrados (para usar luego si falta la amarilla)
         ancho_actual = int(np.mean(centros_der)) - int(np.mean(centros_izq))
-        centro_temp = (int(np.mean(centros_izq)) + int(np.mean(centros_der))) // 2
-        error_temp = centro_imagen - centro_temp
-        if -100 < error_temp < 100:
+        error_temp = centro_imagen - centro_carril
+        if -110 < error_temp < 110:          # Solo en recta real
             ancho_carril_confiable = ancho_actual
 
-    # Calcular el centro SIEMPRE basado en la roja y el ancho guardado
-    if centros_der:
-        centro_carril = int(np.mean(centros_der)) - (ancho_carril_confiable // 2)
     elif centros_izq:
-        # Si solo queda la amarilla (raro, pero por si acaso)
-        centro_carril = int(np.mean(centros_izq)) + (ancho_carril_confiable // 2)
+        centro_carril = int(np.mean(centros_izq)) + 100
+
+    elif centros_der:
+        # Solo línea roja: usar el ancho guardado en recta
+        centro_carril = int(np.mean(centros_der)) - (ancho_carril_confiable // 2)
+
     else:
         centro_carril = None
 
@@ -222,7 +224,7 @@ def detectar_carriles(frame):
         cv2.circle(roi, (centro_imagen,  roi_h//2), 6, (255, 255, 255), -1)
         cv2.putText(frame, f"Error: {error}", (10, 110), 0, 0.7, (0, 255, 0), 2)
 
-        if -100 < error < 100:
+        if -110 < error < 110:
             comando = "a"
             direccion = "ADELANTE"
         elif error >= 100:
