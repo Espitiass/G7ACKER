@@ -197,7 +197,7 @@ def detectar_carriles(frame):
     if centro_carril is not None:
         cv2.line(roi, (centro_carril, 0), (centro_carril, roi_h), (0, 255, 0), 2)
 
-    comando = "x"
+    comando = "a"
     direccion = "DEFAULT STOP"
 
     # ── DECISIÓN COMBINADA ──────────────────────────────────────
@@ -216,15 +216,15 @@ def detectar_carriles(frame):
         cv2.circle(roi, (centro_imagen,  roi_h//2), 6, (255, 255, 255), -1)
         cv2.putText(frame, f"Error: {error}", (10, 110), 0, 0.7, (0, 255, 0), 2)
 
-        if -110 < error < 110:
+        if -10 < error < 100:
             comando = "a"
             direccion = "ADELANTE"
 
-        elif error >= 110:
+        elif error >= 100:
             comando = "d"
             direccion = "IZQUIERDA"
 
-        elif error <= -110:
+        elif error <= -100:
             comando = "i"
             direccion = "DERECHA"
 

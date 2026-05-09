@@ -1,112 +1,41 @@
 #!/usr/bin/env python3
-# main.py - Ejecuta el sistema de carril y el lector QR simultáneamente
+# main.py
 
-import subprocess
-import time
+import multiprocessing as mp
 import signal
 import sys
-import os
 
-class SistemaRobot:
-    def __init__(self):
-        self.procesos = []
-        
-    def iniciar_carril(self):
-        """Iniciar el sistema de seguimiento de carril"""
-        print("🚗 Iniciando sistema de seguimiento de carril...")
-        try:
-            proceso = subprocess.Popen(
-                ['python3', 'carril_con_qr.py'],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
-            )
-            self.procesos.append(('Carril', proceso))
-            print("✅ Sistema de carril iniciado correctamente")
-            return True
-        except Exception as e:
-            print(f"❌ Error al iniciar sistema de carril: {e}")
-            return False
-    
-    def iniciar_qr(self):
-        """Iniciar el lector QR"""
-        print("📷 Iniciando lector QR...")
-        try:
-            proceso = subprocess.Popen(
-                ['python3', 'qr_simple.py'],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
-            )
-            self.procesos.append(('QR', proceso))
-            print("✅ Lector QR iniciado correctamente")
-            return True
-        except Exception as e:
-            print(f"❌ Error al iniciar lector QR: {e}")
-            return False
-    
-    def detener_todos(self):
-        """Detener todos los procesos"""
-        print("\n🛑 Deteniendo todos los sistemas...")
-        for nombre, proceso in self.procesos:
-            print(f"  Deteniendo {nombre}...")
-            try:
-                proceso.terminate()
-                proceso.wait(timeout=3)
-            except subprocess.TimeoutExpired:
-                proceso.kill()
-                print(f"  {nombre} detenido forzosamente")
-            except:
-                print(f"  Error al detener {nombre}")
-        print("✅ Todos los sistemas detenidos")
-    
-    def monitorear(self):
-        """Monitorear que los procesos sigan ejecutándose"""
-        while True:
-            for nombre, proceso in self.procesos:
-                if proceso.poll() is not None:
-                    print(f"⚠️ {nombre} se detuvo inesperadamente")
-                    return False
-            time.sleep(2)
-        return True
-    
-    def ejecutar(self):
-        """Ejecutar todos los sistemas"""
-        print("=" * 50)
-        print("🤖 ROBOT - SISTEMA DE NAVEGACIÓN")
-        print("=" * 50)
-        
-        # Iniciar sistemas
-        if not self.iniciar_carril():
-            return
-        
-        time.sleep(2)  # Esperar que el servidor socket esté listo
-        
-        if not self.iniciar_qr():
-            self.detener_todos()
-            return
-        
-        print("\n" + "=" * 50)
-        print("✅ SISTEMAS OPERATIVOS")
-        print("📡 Stream de video: http://localhost:5000")
-        print("🔍 Lector QR activo (presiona 'q' en ventana QR para cerrar)")
-        print("🛑 Presiona Ctrl+C para detener todos los sistemas")
-        print("=" * 50 + "\n")
-        
-        # Manejar señal de interrupción
-        def signal_handler(sig, frame):
-            print("\n\n⚠️ Señal de interrupción recibida")
-            self.detener_todos()
-            sys.exit(0)
-        
-        signal.signal(signal.SIGINT, signal_handler)
-        
-        # Monitorear procesos
-        try:
-            self.monitorear()
-        except KeyboardInterrupt:
-            signal_handler(None, None)
+def signal_handler(sig, frame):
+    print("\n[Main] Cerrando...")
+    if proc_qr.is_alive():
+        proc_qr.terminate()
+        proc_qr.join()
+    sys.exit(0)
 
-if __name__ == "__main__":
-    robot = SistemaRobot()
-    robot.ejecutar()
+if __name__ == '__main__':
+
+    signal.signal(signal.SIGINT, signal_handler)
+
+    # 🔴 IMPORTANTE (evita problemas con cámara)
+    mp.set_start_method('spawn', force=True)
+
+    qr_queue = mp.Queue()
+    action_queue = mp.Queue()
+    line_status_queue = mp.Queue()
+    status_queue = mp.Queue()
+
+    from motor_control import run_motor_control
+    from qr_logic import run_qr_logic
+
+    # 🔴 SOLO QR_LOGIC como proceso
+    proc_qr = mp.Process(
+        target=run_qr_logic,
+        args=(qr_queue, action_queue, line_status_queue, status_queue),
+        daemon=True
+    )
+    proc_qr.start()
+
+    print("[Main] Stream en: http://<IP>:5000")
+
+    # 🔴 MOTOR_CONTROL corre en el proceso principal (NO proceso hijo)
+    run_motor_control(qr_queue, action_queue, line_status_queue, status_queue)
