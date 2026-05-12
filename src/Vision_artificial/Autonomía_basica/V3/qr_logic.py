@@ -1,11 +1,63 @@
 #!/usr/bin/env python3
-# qr_logic.py - Versión corregida con control de override limpio
+# qr_logic.py - Adaptado a detección por ID de AprilTag (MAPA_TAGS)
 
-import json
 import time
 import multiprocessing as mp
 from gpiozero import Button
 import lgpio
+
+# ==============================
+# 🗺️ MAPA DE TAGS
+# ==============================
+MAPA_TAGS = {
+    1: {
+        "tipo": "carga",
+        "numero": 1,
+    },
+    2: {
+        "tipo": "descarga",
+        "numero": 1,
+        "carril": "carril 2"
+    },
+    3: {
+        "tipo": "descarga",
+        "numero": 2,
+        "carril": "carril 3"
+    },
+    4: {
+        "tipo": "descarga",
+        "numero": 3,
+        "carril": "carril 3"
+    },
+    5: {
+        "carril 2": "izquierda",
+        "carril 3": "avanzar"
+    },
+    6: {
+        "tipo": "descarga",
+        "numero": 1,
+        "posicion": "entrada"
+    },
+    7: {
+        "tipo": "descarga",
+        "numero": 2,
+        "posicion": "entrada"
+    },
+    8: {
+        "tipo": "descarga",
+        "numero": 3,
+        "posicion": "entrada"
+    },
+    9: {
+        "carril 1": "izquierda",
+        "carril 3": "derecha"
+    },
+    10: {
+        "carril 1": "avanzar",
+        "carril 2": "izquierda"
+    },
+}
+
 
 class QRLogic:
     def __init__(self, qr_queue, action_queue, line_status_queue, status_queue):
@@ -33,7 +85,8 @@ class QRLogic:
         self.tiempo_ultimo_qr = 0
         self.timeout_perdida_qr = 2.0
 
-        self.ultimo_qr_procesado = ""
+        # ⚠️ Ahora comparamos enteros (ID del tag) en vez de strings
+        self.ultimo_qr_procesado = None
         self.tiempo_ultimo_procesamiento = 0
         self.cooldown_procesamiento = 1.5
 
@@ -50,28 +103,6 @@ class QRLogic:
         return valor == 0  # 0 = detecta
 
     # ==============================
-    # 📦 PARSEO QR
-    # ==============================
-    def parsear_qr(self, qr_str):
-        try:
-            data = json.loads(qr_str)
-            if isinstance(data, list) and len(data) > 0:
-                data = data[0]
-
-            if not isinstance(data, dict):
-                return None
-
-            clave = list(data.keys())[0]
-            contenido = data[clave]
-
-            if isinstance(contenido, dict):
-                return clave, contenido
-
-            return None
-        except Exception:
-            return None
-
-    # ==============================
     # 🔁 LOOP PRINCIPAL
     # ==============================
     def ejecutar(self):
@@ -84,11 +115,11 @@ class QRLogic:
             except:
                 pass
 
-            # QR recibido
+            # QR recibido (ahora es un entero: ID del tag)
             try:
-                qr_data = self.qr_queue.get(block=False)
-                print(f"[QR] Recibido: {qr_data}")
-                self.procesar_qr(qr_data)
+                tag_id = self.qr_queue.get(block=False)
+                print(f"[QR] Tag recibido: ID={tag_id}")
+                self.procesar_qr(tag_id)
             except:
                 pass
 
@@ -124,134 +155,136 @@ class QRLogic:
         ahora = time.time()
 
         if self.qr_visible and (ahora - self.tiempo_ultimo_qr) > self.timeout_perdida_qr:
-            print("[QR] QR perdido de vista (timeout)")
+            print("[QR] Tag perdido de vista (timeout)")
             self.qr_visible = False
 
     # ==============================
-    # 🧠 PROCESAMIENTO QR
+    # 🧠 PROCESAMIENTO TAG (antes: procesar_qr con JSON)
     # ==============================
-    def procesar_qr(self, qr_str):
-        ahora = time.time()
-
+    def procesar_qr(self, tag_id):
+        """
+        Recibe un entero (ID del AprilTag), lo resuelve en MAPA_TAGS
+        y ejecuta la misma lógica de estados que antes.
+        """
+        # --- Ignorar tags de carga cuando no toca ---
         if self.estado not in ("ESPERA_CARGA",):
-            parsed = self.parsear_qr(qr_str)
-            if parsed:
-                clave, contenido = parsed
-                if contenido.get("tipo de estacion", "").lower() == "carga":
-                    print("[QR] Ignorando QR de carga, estado actual:", self.estado)
-                    return
+            if tag_id == 1:  # ID 1 = carga
+                print("[QR] Ignorando tag de carga, estado actual:", self.estado)
+                return
 
         if self.estado == "AVANZAR_8S":
             return
 
-        if qr_str == self.ultimo_qr_procesado and (ahora - self.tiempo_ultimo_procesamiento) < self.cooldown_procesamiento:
+        ahora = time.time()
+
+        # Cooldown anti-spam (comparación entera)
+        if tag_id == self.ultimo_qr_procesado and (ahora - self.tiempo_ultimo_procesamiento) < self.cooldown_procesamiento:
             return
 
-        self.ultimo_qr_procesado = qr_str
+        # Resolver el tag en el mapa
+        contenido = MAPA_TAGS.get(tag_id)
+        if contenido is None:
+            print(f"[QR] ID {tag_id} no encontrado en MAPA_TAGS")
+            return
+
+        self.ultimo_qr_procesado = tag_id
         self.tiempo_ultimo_procesamiento = ahora
         self.tiempo_ultimo_qr = ahora
         self.qr_visible = True
 
-        parsed = self.parsear_qr(qr_str)
-
-        if parsed is None:
-            print("[QR] Formato no reconocido")
-            return
-
-        clave, contenido = parsed
-        print("CLAVE:", clave)
-        print("CONTENIDO:", contenido)
-        print("ESTADO ACTUAL:", self.estado)
+        print(f"TAG ID: {tag_id}")
+        print(f"CONTENIDO: {contenido}")
+        print(f"ESTADO ACTUAL: {self.estado}")
 
         # ==============================
-        # 🟢 ESPERA CARGA
+        # 🟢 ESPERA CARGA  →  ID 1
         # ==============================
         if self.estado == "ESPERA_CARGA":
-            if contenido.get("tipo de estacion", "").lower() == "carga":
-                if contenido.get("posicion del qr", "").lower() == "entrada":
-                    print("[Estado] QR Carga Entrada -> seguir línea directo")
-                    self.ultimo_comando_enviado = "FORZAR"
-                    self.enviar_accion(None)
-                    self.estado = "ESPERA_OBJETIVO"
+            if tag_id == 1:
+                print("[Estado] Tag Carga (ID 1) -> seguir línea directo")
+                self.ultimo_comando_enviado = "FORZAR"
+                self.enviar_accion(None)
+                self.estado = "ESPERA_OBJETIVO"
             return
 
         # ==============================
-        # 🟢 OBJETIVO
+        # 🟢 OBJETIVO  →  ID 2, 3, 4
         # ==============================
         if self.estado in ("ESPERA_OBJETIVO", "ESPERA_OBJETIVO_QR"):
-            if "objetivo" in clave.lower():
-                tipo = contenido.get("tipo de estacion", "").lower()
-                numero = contenido.get("numero de estacion", "")
+            if tag_id in (2, 3, 4):
+                tipo   = contenido.get("tipo", "").lower()
+                numero = contenido.get("numero")
                 carril = contenido.get("carril", "").lower()
 
-                if tipo == "descarga" and numero and carril:
-                    self.tipo_estacion = tipo
-                    self.numero_estacion = numero
-                    self.carril_objetivo = carril
+                if tipo == "descarga" and numero is not None and carril:
+                    self.tipo_estacion    = tipo
+                    self.numero_estacion  = numero
+                    self.carril_objetivo  = carril
                     print(f"[Estado] Objetivo guardado: Estación {self.numero_estacion} en {self.carril_objetivo}")
             return
 
         # ==============================
-        # 🟡 GIRO
+        # 🟡 GIRO  →  ID 5
         # ==============================
         if self.estado == "ESPERA_GIRO":
-            if "informativa" in clave.lower():
-
+            if tag_id == 5:
                 direccion = None
 
-                if self.carril_objetivo in contenido:
+                # contenido tiene forma {"carril 2": "izquierda", "carril 3": "avanzar"}
+                if self.carril_objetivo and self.carril_objetivo in contenido:
                     valor = contenido[self.carril_objetivo].lower()
 
                     if "izquierda" in valor:
                         direccion = "izquierda"
-                    elif "derecho" in valor:
-                        direccion = "derecho"
+                    elif "derecho" in valor or "avanzar" in valor:
+                        # "avanzar" = seguir recto, mantenemos la lógica original
+                        # que solo actuaba con izquierda/derecho; si es avanzar
+                        # no giramos pero sí liberamos el override para seguir línea.
+                        direccion = valor  # guardamos el valor literal
 
                 if direccion:
                     self.direccion_guardada = direccion
-                    print(f"[Estado] QR Giro -> dirección: {direccion}")
-                    self.ultimo_comando_enviado = "FORZAR"  # ← romper anti-spam
-                    self.enviar_accion(None)                # ← seguir línea
+                    print(f"[Estado] Tag Giro (ID 5) -> dirección: {direccion}")
+                    self.ultimo_comando_enviado = "FORZAR"
+                    self.enviar_accion(None)
                     self.estado = "ESPERANDO_PERDER_LINEAS"
-
             return
 
         # ==============================
-        # 🟢 DESCARGA
+        # 🟢 DESCARGA  →  ID 6, 7, 8
         # ==============================
         if self.estado == "ESPERA_DESCARGA":
-            if "descarga" in clave.lower() and "entrada" in str(contenido).lower():
+            if tag_id in (6, 7, 8):
+                num_estacion_tag = contenido.get("numero")
+                posicion         = contenido.get("posicion", "").lower()
 
-                num_estacion_qr = contenido.get("numero de estacion", "")
-
-                if num_estacion_qr == self.numero_estacion:
-                    print(f"[Estado] Entrada a estación {self.numero_estacion}")
+                if posicion == "entrada" and num_estacion_tag == self.numero_estacion:
+                    print(f"[Estado] Entrada a estación {self.numero_estacion} (ID {tag_id})")
                     self.enviar_accion("a")
                     self.estado = "ESPERA_FIN_DESCARGA"
-
             return
 
         # ==============================
-        # 🟢 FIN RECORRIDO
+        # 🟢 FIN RECORRIDO  →  ID 9, 10
         # ==============================
         if self.estado == "ESPERA_FIN_RECORRIDO":
-            if "fin recorrido" in clave.lower():
+            if tag_id in (9, 10):
+                # Buscamos la dirección para "carril 1"
+                # (misma lógica que el bloque original con "Carril 1")
+                dir_text = contenido.get("carril 1", "").lower()
 
-                if "Carril 1" in contenido:
-                    dir_text = contenido["Carril 1"].lower()
-
+                if dir_text:
                     if "izquierda" in dir_text:
                         self.direccion_guardada = "izquierda"
-                    elif "derecho" in dir_text:
+                    elif "derecho" in dir_text or "derecha" in dir_text:
                         self.direccion_guardada = "derecho"
 
-                    print(f"[Estado] Fin recorrido -> dirección: {self.direccion_guardada}")
+                    print(f"[Estado] Fin recorrido (ID {tag_id}) -> dirección: {self.direccion_guardada}")
                     self.estado = "ESPERANDO_PERDER_LINEAS"
-
             return
 
     # ==============================
-    # ⚙️ ACCIONES
+    # ⚙️ ACCIONES  (sin cambios)
     # ==============================
     def actualizar_accion(self):
         ahora = time.time()
@@ -275,17 +308,17 @@ class QRLogic:
             if self.fin_carrera.is_pressed:
                 print("[Estado] Fin carrera → seguir línea buscando QR objetivo")
                 self.ultimo_comando_enviado = "FORZAR"
-                self.ultimo_qr_procesado = ""
+                self.ultimo_qr_procesado = None
                 self.numero_estacion = None
-                self.enviar_accion("SEGUIR_BUSCANDO")  # ← señal especial para buscar marcos
+                self.enviar_accion("SEGUIR_BUSCANDO")
                 self.estado = "ESPERA_OBJETIVO_QR"
 
         elif self.estado == "ESPERA_OBJETIVO_QR":
             if self.numero_estacion is not None:
                 print(f"[Estado] Objetivo recibido → Estación {self.numero_estacion} → ESPERA_GIRO")
-                self.ultimo_qr_procesado = ""  # ← agregar
+                self.ultimo_qr_procesado = None
                 self.estado = "ESPERA_GIRO"
-                
+
             if self.ultimo_comando_enviado != "SEGUIR_BUSCANDO":
                 self.ultimo_comando_enviado = "FORZAR"
                 self.enviar_accion("SEGUIR_BUSCANDO")
@@ -294,7 +327,7 @@ class QRLogic:
                 print(f"[Estado] Objetivo recibido → Estación {self.numero_estacion} → ESPERA_GIRO")
                 self.estado = "ESPERA_GIRO"
 
-        elif self.estado == "ESPERA_GIRO":          # ← agregar este bloque
+        elif self.estado == "ESPERA_GIRO":
             if self.ultimo_comando_enviado != "SEGUIR_BUSCANDO":
                 self.ultimo_comando_enviado = "FORZAR"
                 self.enviar_accion("SEGUIR_BUSCANDO")
@@ -319,7 +352,7 @@ class QRLogic:
 
         elif self.estado == "ESPERA_FIN_DESCARGA":
             if not self.qr_visible:
-                print("[Estado] QR descarga perdido -> STOP")
+                print("[Estado] Tag descarga perdido -> STOP")
                 self.enviar_accion("x")
                 self.estado = "ESPERANDO_FIN_CARRERA_DESACTIVAR"
                 self.tiempo_inicio_espera = ahora
@@ -339,20 +372,6 @@ class QRLogic:
             else:
                 if hasattr(self, 'tiempo_desactivacion'):
                     del self.tiempo_desactivacion
-
-        # #elif self.estado == "AVANZAR_8S":
-        #     if (ahora - self.tiempo_inicio_avance) >= 8.0:
-        #         print("[Estado] 8s completados -> STOP")
-        #         self.ultimo_comando_enviado = None
-        #         self.enviar_accion("x")
-        #         self.estado = "ESPERA_CARGA"
-
-        # elif self.estado == "ESPERA_CARGA":
-        #     if self.fin_carrera.is_pressed:
-        #         print("[Estado] Fin de carrera -> seguir línea hacia objetivo")
-        #         self.ultimo_comando_enviado = None
-        #         self.enviar_accion(None)
-        #         self.estado = "ESPERA_OBJETIVO"
 
 
 def run_qr_logic(qr_q, action_q, line_q, status_q):

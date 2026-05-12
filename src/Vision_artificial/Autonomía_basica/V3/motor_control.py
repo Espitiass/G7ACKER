@@ -432,7 +432,7 @@ def generar_frames():
                                 print(f"[QR] LEÍDO: {qr_data}")
                                 qr_guardado = qr_data
                                 if qr_queue is not None:
-                                    qr_queue.put(qr_data)
+                                    qr_queue.put(tag_id)
                                 time.sleep(1.5)
                                 estado = "SEGUIR_LINEA"
                                 esperando_qr_logic = True          # ← bloquear marcos
