@@ -33,6 +33,7 @@ if __name__ == '__main__':
         args=(qr_queue, action_queue, line_status_queue, status_queue),
         daemon=True
     )
+    
     proc_qr.start()
 
     print("[Main] Stream en: http://<IP>:5000")
