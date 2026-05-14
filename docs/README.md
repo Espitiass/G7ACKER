@@ -13,17 +13,11 @@ docs/
 │   ├── Propuesta formal.docx
 │
 │── bitacoras/
-│   ├── FI-F-001 BITÁCORA SEMANA 4 y 5 - PLANEACIÓN.pdf
 │   ├── FI-F-001 BITÁCORA SEMANA 4 y 5 - EJECUCIÓN.pdf
-│   ├── FI-F-001 BITÁCORA SEMANA 6 y 7 - PLANEACIÓN.pdf
 │   ├── FI-F-001 BITÁCORA SEMANA 6 y 7 - EJECUCIÓN.pdf
-│   ├── FI-F-001 BITÁCORA SEMANA 8 y 9 - PLANEACIÓN.pdf
 │   ├── FI-F-001 BITÁCORA SEMANA 8 y 9 - EJECUCIÓN.pdf
-│   ├── FI-F-001 BITÁCORA SEMANA 10 y 11 - PLANEACIÓN.pdf
 |   ├── FI-F-001 BITÁCORA SEMANA 10 y 11 - EJECUCIÓN.pdf
-│   ├── FI-F-001 BITÁCORA SEMANA 12 y 13 - PLANEACIÓN.pdf
 |   ├── FI-F-001 BITÁCORA SEMANA 12 y 13 - EJECUCIÓN.pdf
-|   ├── FI-F-001 BITÁCORA SEMANA 14 y 15 - PLANEACIÓN.pdf
 │
 │── imagenes/
 |
@@ -51,8 +45,7 @@ Estos documentos definen el alcance, objetivos y lineamientos generales del desa
 
 Registro semanal del desarrollo del proyecto, estructurado en:
 
-* Planeación: actividades previstas
-* Ejecución: actividades realizadas
+* Ejecución: actividades previstas y actividades realizadas
 
 Las bitácoras permiten llevar trazabilidad del progreso, identificar avances y documentar decisiones tomadas durante el desarrollo.
 
