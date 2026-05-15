@@ -22,6 +22,7 @@ Incluye la representación del sistema electrónico antes de su implementación 
 
 * Imagen del esquemático por medio de ilustración en el sofware DRAW.IO (formato PNG) para visualización rápida
 * Archivo original del esquemático (formato `.sch`) con todas las conexiones y componentes definidos
+* Imagen del esquematico original en FUSION
 
 Este diseño permite validar la correcta interconexión de los módulos antes de avanzar al diseño de la PCB.
 
@@ -33,6 +34,7 @@ Contiene el diseño final de la placa electrónica:
 
 * Archivo de la PCB con ruteo completo (formato `.f3z`, Fusion 360)
 * Modelo 3D de la PCB (formato `.brd`)
+* Imagen del ruto de la pcb en FUSION
 
 Este diseño corresponde a la versión enviada a fabricación, incluyendo:
 
