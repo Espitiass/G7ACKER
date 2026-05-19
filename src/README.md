@@ -8,109 +8,129 @@ El objetivo de esta carpeta es **centralizar todo el software del sistema**, per
 
 ---
 
-## 🧩 Estructura del proyecto 
+# 🧩 Estructura del proyecto
 
-La organización del código se divide en los siguientes módulos:
-
-### 🔧 Control_de_motores/
-
-Contiene el código relacionado con el control de actuadores del robot.
-
-**Subcarpetas:**
-
-- `Prueba_motores/`
-  - `PPR.cpp` → Cálculo de pulsos por revolución.
-  - `RPM.cpp` → Medición de velocidad de los motores.
-
-- `Prueba_servo/`
-  - `prueba_servo.cpp` → Pruebas de funcionamiento del servomotor.
-
-**Archivos principales:**
-- `control_1.cpp`
-- `control_1.1.cpp`
-- `control_1.2.cpp`  
-  → Versiones del sistema de control del robot.
-
-- `control_teclado.cpp`  
-  → Control manual mediante entrada por teclado.
+La organización del código se divide en diferentes módulos según la funcionalidad desarrollada dentro del robot.
 
 ---
 
-### 👁️ Vision_artificial/
+## 🤖 Autonomía_básica/
 
-Contiene los módulos de percepción y navegación autónoma.
+Esta carpeta contiene los algoritmos relacionados con la **navegación autónoma básica del robot**, incluyendo seguimiento de carriles, detección de obstáculos y toma de decisiones sobre la pista.
 
-#### 📂 Autonomía_basica/
+La carpeta se divide en dos versiones principales:
 
-**V1 (primeras pruebas):**
-- `Detencion_de_line.py` → Detección de línea.
-- `Detencion_obstaculos.py` → Detección básica de obstáculos.
-- `det.py` → Script auxiliar de detección.
-- `detencion_distancia.py` → Detección basada en distancia.
+### 📂 V1/
 
-**V2 (versiones mejoradas):**
-- `obstaculo_1.py`
-- `obstaculo_1.1.py`
-- `obstaculo_2.py`
-- `obstaculo_2.1.py`  
-→ Algoritmos mejorados de detección y evasión de obstáculos.
+Contiene la primera versión funcional del sistema de autonomía básica del robot.
 
----
+En esta etapa se desarrollaron e integraron:
 
-### 🔌 Comunicación_serial/
+- Seguimiento de líneas o carriles.
+- Detección de obstáculos mediante sensor ultrasónico.
+- Control básico de desplazamiento autónomo.
 
-Módulos encargados de la comunicación entre la **Raspberry Pi y el ESP32**.
-
-- `com_rasp_esp.cpp` → Comunicación desde el ESP32.
-- `comunicacion_rasp.py` → Comunicación desde Raspberry Pi.
-- `prueba_serial.py` → Pruebas de envío y recepción de datos.
+Esta versión representa la primera implementación estable de navegación autónoma sobre pista.
 
 ---
 
-### 📷 Prueba_camara/
+### 📂 V2/
 
-Scripts para pruebas con la cámara.
+Corresponde a la versión más reciente y estructurada del sistema de autonomía básica.
 
-- `prueba_camara.py` → Captura de imagen.
-- `pru_cam_con_serial.py` → Integración cámara + comunicación serial.
-- `servidor.py` → Streaming o servidor de cámara.
+Esta versión divide las funciones principales del robot en diferentes módulos:
 
----
+- `main.py`  
+  Archivo principal encargado de iniciar y coordinar la ejecución del sistema.
 
-### 📡 Prueba_ultrasonico/
+- `motor_control.py`  
+  Gestiona el control de movimiento del robot, la activación de motores y la comunicación con la ESP32.
 
-Código relacionado con sensores de distancia.
+- `qr_logic.py`  
+  Procesa la información obtenida mediante lectura de códigos QR y toma decisiones de navegación dentro de la pista.
 
-- `ultra_sonico.py` → Lectura del sensor ultrasónico.
-- `prueba_ultra_sonico.py` → Pruebas básicas.
-- `codigo_camara_ultra.py` → Integración cámara + sensor ultrasónico.
-
----
-
-## ⚙️ Organización del código 
-
-El código del proyecto se desarrolla siguiendo un enfoque **modular**, donde cada archivo cumple una función específica dentro del sistema.  
-
-Además, se trabaja con múltiples versiones de prueba (V1, V2, control_1.x), lo que permite mejorar progresivamente cada componente sin afectar el resto del sistema.
-
-Esta organización facilita:
-
-- La comprensión del funcionamiento del robot.
-- La depuración y mejora del código.
-- La integración de nuevas funcionalidades.
-- El trabajo colaborativo dentro del equipo.
+Esta estructura modular permite separar la lógica de navegación, percepción y control, facilitando la organización y escalabilidad del proyecto.
 
 ---
 
-## 🚀 Desarrollo continuo 
+## ⚙️ Control_de_motores/
 
-Dado que el proyecto se encuentra en constante evolución, esta carpeta seguirá creciendo con nuevos módulos relacionados con:
+Esta carpeta contiene el código desarrollado para el control de los motores y actuadores del robot desde la ESP32.
 
-- Control del robot
-- Visión artificial avanzada
+Aquí se encuentra la versión final del sistema de control:
+
+- `control_1.2.cpp`
+
+Este código es el encargado de:
+
+- Recibir las instrucciones enviadas desde la Raspberry Pi 5.
+- Interpretar los comandos de movimiento.
+- Controlar los motores mediante señales enviadas al driver.
+- Ejecutar acciones como avance, retroceso, giros y detención del robot.
+
+Además, dentro de esta carpeta se encuentran versiones previas y pruebas realizadas durante el desarrollo del sistema de control.
+
+---
+
+## 🧪 Pruebas/
+
+Esta carpeta contiene todas las pruebas realizadas de manera independiente sobre sensores, actuadores y sistemas de comunicación del robot.
+
+El objetivo de estas pruebas es:
+
+- Validar el funcionamiento individual de cada componente.
+- Detectar errores antes de integrar los módulos al sistema principal.
+- Facilitar la depuración del hardware y software.
+- Comprobar estabilidad y comunicación entre dispositivos.
+
+Dentro de esta carpeta se incluyen pruebas relacionadas con:
+
+### 📷 Cámara
+Pruebas de captura de imagen, procesamiento y funcionamiento de la cámara.
+
+### 🔌 Comunicación serial
+Pruebas de comunicación entre Raspberry Pi y ESP32.
+
+### 📡 Sensores
+Pruebas individuales de sensores ultrasónicos, sensores IR y finales de carrera.
+
+### ⚙️ Motores
+Pruebas de velocidad, RPM, encoders y control de motores.
+
+### 🔄 Servo motores
+Pruebas de funcionamiento y posicionamiento del servomotor.
+
+### 🏁 Integración final
+Pruebas completas del comportamiento del robot sobre la pista.
+
+---
+
+# ⚙️ Organización del código
+
+El proyecto sigue un enfoque de desarrollo **modular**, donde cada archivo cumple una función específica dentro del sistema general del robot.
+
+Esta metodología permite:
+
+- Facilitar la comprensión del sistema.
+- Mejorar la depuración del código.
+- Integrar nuevas funcionalidades sin afectar otros módulos.
+- Mantener un desarrollo organizado y escalable.
+- Favorecer el trabajo colaborativo dentro del equipo.
+
+Además, se manejan múltiples versiones y pruebas progresivas para validar el funcionamiento del robot antes de integrar cada componente al sistema principal.
+
+---
+
+# 🚀 Desarrollo continuo
+
+El proyecto se encuentra en constante evolución, por lo que esta carpeta seguirá creciendo con nuevos módulos y mejoras relacionadas con:
+
 - Navegación autónoma
+- Visión artificial
 - Integración de sensores
 - Comunicación entre sistemas
-- Optimización del rendimiento
+- Optimización de control
+- Automatización de decisiones
+- Mejora del rendimiento general del robot
 
-Por esta razón, el contenido de esta carpeta puede actualizarse a medida que el desarrollo del robot avance.
+Por esta razón, el contenido de esta carpeta puede actualizarse continuamente a medida que avance el desarrollo del robot móvil autónomo G7ACKER.
