@@ -95,6 +95,12 @@ class QRLogic:
         self.tiempo_ultimo_procesamiento = 0
         self.cooldown_procesamiento = 1.5
 
+        # ✅ Control del zigzag en intersección
+        self.zigzag_paso = 0        # 0 = d, 1 = a, alternando
+        self.zigzag_tiempo = 0      # timestamp del último cambio de paso
+        self.ZIGZAG_D = 0.60        # segundos girando (d)
+        self.ZIGZAG_A = 0.2        # segundos avanzando (a)
+
     # ==============================
     # 🔧 ENVÍO CONTROLADO DE ACCIONES
     # ==============================
@@ -209,10 +215,10 @@ class QRLogic:
         # ==============================
         if self.estado == "ESPERA_CARGA":
             if tag_id == 1:
-                print("[Estado] Tag Carga (ID 1) -> esperando fin de carrera")
+                print("[Estado] Tag Carga (ID 1) -> seguir línea directo")
                 self.ultimo_comando_enviado = "FORZAR"
-                self.enviar_accion("x")
-                self.estado = "ESPERANDO_FIN_CARRERA"
+                self.enviar_accion(None)
+                self.estado = "ESPERA_OBJETIVO"
             return
 
         # ==============================
@@ -293,54 +299,29 @@ class QRLogic:
     def actualizar_accion(self):
         ahora = time.time()
 
-        # ==============================
-        # CAMBIO 1: ESPERANDO_FIN_CARRERA (después de ID1)
-        # Espera que fin carrera se ACTIVE + delay 5s → buscar ID2
-        # ==============================
         if self.estado == "ESPERANDO_FIN_CARRERA":
             if self.fin_carrera.is_pressed:
-                if not hasattr(self, 'tiempo_fin_carrera'):
-                    self.tiempo_fin_carrera = ahora
-                    print("[Estado] Fin carrera activo → esperando 5s")
-                elif (ahora - self.tiempo_fin_carrera) >= 5.0:
-                    print("[Estado] Delay completo → seguir línea buscando ID2")
-                    del self.tiempo_fin_carrera
-                    self.ultimo_comando_enviado = "FORZAR"
-                    self.enviar_accion("SEGUIR_BUSCANDO")
-                    self.estado = "ESPERA_OBJETIVO_QR"
-            else:
-                if hasattr(self, 'tiempo_fin_carrera'):
-                    del self.tiempo_fin_carrera
+                print("[Estado] Fin de carrera -> continuar")
+                self.enviar_accion(None)
+                self.estado = "ESPERA_OBJETIVO"
 
-        # ==============================
-        # CAMBIO 2: ESPERA_OBJETIVO
-        # IR confirma → STOP. Fin carrera activo + delay 5s → buscar ID2
-        # ==============================
         elif self.estado == "ESPERA_OBJETIVO":
             if self.infrarrojo_detecta():
                 self.contador_infrarrojo += 1
                 if self.contador_infrarrojo >= self.umbral_infrarrojo:
                     self.ultimo_comando_enviado = "FORZAR"
                     self.enviar_accion("x")
-                    print("[Estado] Infrarrojo confirmado → STOP")
+                    print("[Estado] Infrarrojo confirmado → STOP, esperando fin de carrera")
             else:
                 self.contador_infrarrojo = 0
 
             if self.fin_carrera.is_pressed:
-                if not hasattr(self, 'tiempo_fin_carrera'):
-                    self.tiempo_fin_carrera = ahora
-                    print("[Estado] Fin carrera activo → esperando 5s")
-                elif (ahora - self.tiempo_fin_carrera) >= 5.0:
-                    print("[Estado] Delay completo → buscando ID2")
-                    del self.tiempo_fin_carrera
-                    self.ultimo_comando_enviado = "FORZAR"
-                    self.ultimo_qr_procesado = None
-                    self.numero_estacion = None
-                    self.enviar_accion("SEGUIR_BUSCANDO")
-                    self.estado = "ESPERA_OBJETIVO_QR"
-            else:
-                if hasattr(self, 'tiempo_fin_carrera'):
-                    del self.tiempo_fin_carrera
+                print("[Estado] Fin carrera → seguir línea buscando QR objetivo")
+                self.ultimo_comando_enviado = "FORZAR"
+                self.ultimo_qr_procesado = None
+                self.numero_estacion = None
+                self.enviar_accion("SEGUIR_BUSCANDO")
+                self.estado = "ESPERA_OBJETIVO_QR"
 
         elif self.estado == "ESPERA_OBJETIVO_QR":
             if self.numero_estacion is not None:
@@ -362,75 +343,72 @@ class QRLogic:
                 self.enviar_accion("SEGUIR_BUSCANDO")
 
         # ==============================
+        # ==============================
         # 🔶 ESPERA PERDER AMARILLA
         # Robot sigue línea normal hasta que la amarilla (izq) desaparece
         # → señal de que entró a la intersección
         # ==============================
         elif self.estado == "ESPERANDO_PERDER_AMARILLA":
             if not self.hay_amarilla:
-                print("[Estado] Amarilla perdida → iniciando cruce por pasos fijos")
+                self.contador_zigzag = 0
+                print("[Estado] Amarilla perdida → iniciando zigzag diagonal")
+                self.zigzag_paso = 0
+                self.zigzag_tiempo = ahora
                 self.ultimo_comando_enviado = "FORZAR"
                 self.enviar_accion("SEGUIR_BUSCANDO")
-                self.enviar_accion("a")
+                self.enviar_accion("d")
                 self.estado = "CRUZANDO_INTERSECCION"
 
         # ==============================
-        # CAMBIO 3: CRUZANDO_INTERSECCION
-        # 3 pasos fijos: a(4s) → d(3s) → a(3s) → ESPERA_DESCARGA
+        # 🔶 CRUZANDO INTERSECCIÓN (zigzag d/a)
+        # Alterna d y a hasta completar MAX_ZIGZAG ciclos
         # ==============================
         elif self.estado == "CRUZANDO_INTERSECCION":
-            if not hasattr(self, 'inter_paso'):
-                self.inter_paso = 0
-                self.inter_tiempo = ahora
+            self.contador_ambas = 0
 
-            if self.inter_paso == 0:
-                self.enviar_accion("a")
-                if (ahora - self.inter_tiempo) >= 4.0:
-                    self.inter_paso = 1
-                    self.inter_tiempo = ahora
-                    print("[Intersección] paso 1: a completado → d")
-
-            elif self.inter_paso == 1:
-                self.enviar_accion("d")
-                if (ahora - self.inter_tiempo) >= 3.0:
-                    self.inter_paso = 2
-                    self.inter_tiempo = ahora
-                    print("[Intersección] paso 2: d completado → a")
-
-            elif self.inter_paso == 2:
-                self.enviar_accion("a")
-                if (ahora - self.inter_tiempo) >= 3.0:
-                    print("[Intersección] paso 3: completo → seguir línea")
-                    del self.inter_paso
-                    del self.inter_tiempo
+            if self.zigzag_paso == 0:
+                if (ahora - self.zigzag_tiempo) >= self.ZIGZAG_D:
+                    self.zigzag_paso = 1
+                    self.zigzag_tiempo = ahora
                     self.ultimo_comando_enviado = "FORZAR"
-                    self.enviar_accion("SEGUIR_BUSCANDO")
-                    self.enviar_accion(None)
-                    self.estado = "ESPERA_DESCARGA"
-                    self.direccion_guardada = None
+                    self.enviar_accion("a")
+                    print("[Zigzag] → a")
+            else:
+                if (ahora - self.zigzag_tiempo) >= self.ZIGZAG_A:
+                    self.zigzag_paso = 0
+                    self.zigzag_tiempo = ahora
+                    self.contador_zigzag += 1
+                    print(f"[Zigzag] → d  (ciclo {self.contador_zigzag}/{self.MAX_ZIGZAG})")
+
+                    if self.contador_zigzag >= self.MAX_ZIGZAG:
+                        print("[Estado] Zigzag completo → seguir línea")
+                        self.contador_zigzag = 0
+                        self.ultimo_comando_enviado = "FORZAR"
+                        self.enviar_accion("SEGUIR_BUSCANDO")  # ← libera esperando_qr_logic
+                        self.enviar_accion(None)               # ← seguir línea
+                        self.estado = "ESPERA_DESCARGA"
+                        self.direccion_guardada = None
+                        return
+
+                    self.ultimo_comando_enviado = "FORZAR"
+                    self.enviar_accion("d")
 
         elif self.estado == "ESPERA_FIN_DESCARGA":
             if not self.qr_visible:
                 print("[Estado] Tag descarga perdido -> STOP")
                 self.enviar_accion("x")
                 self.estado = "ESPERANDO_FIN_CARRERA_DESACTIVAR"
+                self.tiempo_inicio_espera = ahora
 
-        # ==============================
-        # CAMBIO 4: ESPERANDO_FIN_CARRERA_DESACTIVAR (después de ID6)
-        # Cuando fin carrera se DESACTIVA + delay 5s → buscar ID9
-        # ==============================
         elif self.estado == "ESPERANDO_FIN_CARRERA_DESACTIVAR":
             if not self.fin_carrera.is_pressed:
                 if not hasattr(self, 'tiempo_desactivacion'):
                     self.tiempo_desactivacion = ahora
-                    print("[Estado] Fin carrera desactivado → esperando 5s")
-                elif (ahora - self.tiempo_desactivacion) >= 5.0:
-                    print("[Estado] Delay completo → seguir línea buscando ID9")
-                    del self.tiempo_desactivacion
-                    self.ultimo_comando_enviado = "FORZAR"
-                    self.enviar_accion("SEGUIR_BUSCANDO")
+                elif (ahora - self.tiempo_desactivacion) >= 3.0:
+                    print("[Estado] Fin carrera liberado -> continuar")
                     self.enviar_accion(None)
                     self.estado = "ESPERA_FIN_RECORRIDO"
+                    del self.tiempo_desactivacion
             else:
                 if hasattr(self, 'tiempo_desactivacion'):
                     del self.tiempo_desactivacion
