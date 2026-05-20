@@ -16,7 +16,6 @@ if __name__ == '__main__':
 
     signal.signal(signal.SIGINT, signal_handler)
 
-    # 🔴 IMPORTANTE (evita problemas con cámara)
     mp.set_start_method('spawn', force=True)
 
     qr_queue = mp.Queue()
@@ -27,16 +26,14 @@ if __name__ == '__main__':
     from motor_control import run_motor_control
     from qr_logic import run_qr_logic
 
-    # 🔴 SOLO QR_LOGIC como proceso
     proc_qr = mp.Process(
         target=run_qr_logic,
         args=(qr_queue, action_queue, line_status_queue, status_queue),
         daemon=True
     )
-    
+
     proc_qr.start()
 
     print("[Main] Stream en: http://<IP>:5000")
 
-    # 🔴 MOTOR_CONTROL corre en el proceso principal (NO proceso hijo)
     run_motor_control(qr_queue, action_queue, line_status_queue, status_queue)
