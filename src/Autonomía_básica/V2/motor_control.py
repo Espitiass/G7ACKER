@@ -388,7 +388,7 @@ def generar_frames():
                         cv2.putText(frame_proc, f"W_box: {w_box}", (10, 90),
                                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
 
-                        if w_box < 180:
+                        if w_box < 140:
                             enviar_comando("a")
                         else:
                             print("[INFO] DISTANCIA OK → DETENER")

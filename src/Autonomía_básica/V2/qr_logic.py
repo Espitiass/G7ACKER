@@ -408,24 +408,30 @@ class QRLogic:
                     self.direccion_guardada = None
 
         elif self.estado == "ESPERA_FIN_DESCARGA":
-            if not self.qr_visible:
-                print("[Estado] Tag descarga perdido -> STOP")
-                self.enviar_accion("x")
-                self.estado = "ESPERANDO_FIN_CARRERA_DESACTIVAR"
-                self.tiempo_inicio_espera = ahora
-
-        elif self.estado == "ESPERANDO_FIN_CARRERA_DESACTIVAR":
-            if not self.fin_carrera.is_pressed:
-                if not hasattr(self, 'tiempo_desactivacion'):
-                    self.tiempo_desactivacion = ahora
-                elif (ahora - self.tiempo_desactivacion) >= 3.0:
-                    print("[Estado] Fin carrera liberado -> continuar")
-                    self.enviar_accion(None)
-                    self.estado = "ESPERA_FIN_RECORRIDO"
-                    del self.tiempo_desactivacion
+            if self.infrarrojo_detecta():
+                self.contador_infrarrojo += 1
+                if self.contador_infrarrojo >= self.umbral_infrarrojo:
+                    self.ultimo_comando_enviado = "FORZAR"
+                    self.enviar_accion("x")
+                    print("[Estado] IR confirmado → STOP")
             else:
-                if hasattr(self, 'tiempo_desactivacion'):
-                    del self.tiempo_desactivacion
+                self.contador_infrarrojo = 0
+
+            if not self.fin_carrera.is_pressed:
+                if self.infrarrojo_detecta():
+                    if not hasattr(self, 'tiempo_descarga'):
+                        self.tiempo_descarga = ahora
+                        print("[Estado] Fin carrera desactivado + IR activo → timer 7s")
+                    elif (ahora - self.tiempo_descarga) >= 7.0:
+                        print("[Estado] Timer completo → seguir línea buscando QR")
+                        del self.tiempo_descarga
+                        self.contador_infrarrojo = 0
+                        self.ultimo_comando_enviado = "FORZAR"
+                        self.enviar_accion("SEGUIR_BUSCANDO")
+                        self.estado = "ESPERA_FIN_RECORRIDO"
+                else:
+                    if hasattr(self, 'tiempo_descarga'):
+                        del self.tiempo_descarga
 
 
 def run_qr_logic(qr_q, action_q, line_q, status_q):
