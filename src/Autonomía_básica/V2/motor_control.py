@@ -260,7 +260,6 @@ def detectar_carriles(frame):
     enviar_comando(comando)
 
     # 🔍 DIAGNÓSTICO de carril
-    print(f"[Carril] izq={centros_izq} der={centros_der} | centro_carril={centro_carril} | error={error} | cmd={comando} | dir={direccion} | amarilla={hay_amarilla}")
 
     cv2.line(roi, (centro_imagen, 0), (centro_imagen, roi_h), (255, 255, 255), 2)
     if centro_carril is not None:
