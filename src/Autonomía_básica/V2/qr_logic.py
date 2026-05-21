@@ -423,8 +423,8 @@ class QRLogic:
                     print("[Intersección] paso 1: a completado → d")
 
             elif self.inter_paso == 2:
-                self.enviar_accion("d")
-                if (ahora - self.inter_tiempo) >= 4.0:
+                self.enviar_accion("d") #izquierda
+                if (ahora - self.inter_tiempo) >= 6.0:
                     self.inter_paso = 3
                     self.inter_tiempo = ahora
                     print("[Intersección] paso 2: d completado → a")
