@@ -247,17 +247,20 @@ def detectar_carriles(frame):
         direccion = "SIN LINEA"
     else:
         error = centro_imagen - centro_carril
-        if -110 < error < 110:
+        if -100 < error < 100:
             comando = "a"
             direccion = "ADELANTE"
-        elif error >= 110:
+        elif error >= 100:
             comando = "d"
             direccion = "IZQUIERDA"
-        elif error <= -140:     # mas restrictivo: evita tirarse a la derecha
+        elif error <= -100:
             comando = "i"
             direccion = "DERECHA"
 
     enviar_comando(comando)
+
+    # 🔍 DIAGNÓSTICO de carril
+    print(f"[Carril] izq={centros_izq} der={centros_der} | centro_carril={centro_carril} | error={error} | cmd={comando} | dir={direccion} | amarilla={hay_amarilla}")
 
     cv2.line(roi, (centro_imagen, 0), (centro_imagen, roi_h), (255, 255, 255), 2)
     if centro_carril is not None:
