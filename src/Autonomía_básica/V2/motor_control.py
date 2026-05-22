@@ -175,7 +175,7 @@ def detectar_carriles(frame):
     global obstaculo_cercano
 
     altura, ancho = frame.shape[:2]
-    roi_y = int(altura * 0.65)
+    roi_y = int(altura * 0.75)
     roi = frame[roi_y:, :].copy()
     roi_h, roi_w = roi.shape[:2]
 

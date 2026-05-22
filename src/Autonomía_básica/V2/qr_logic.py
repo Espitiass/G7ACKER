@@ -271,7 +271,8 @@ class QRLogic:
 
                 if posicion == "entrada" and num_estacion_tag == self.numero_estacion:
                     print(f"[Estado] Entrada a estación {self.numero_estacion} (ID {tag_id})")
-                    self.enviar_accion("a")
+                    self.ultimo_comando_enviado = "FORZAR"
+                    self.enviar_accion(None)   # bloquea marcos + sigue línea
                     self.estado = "ESPERA_FIN_DESCARGA"
             return
 
@@ -417,7 +418,7 @@ class QRLogic:
             
             elif self.inter_paso == 1:
                 self.enviar_accion("a")
-                if (ahora - self.inter_tiempo) >= 4.0:
+                if (ahora - self.inter_tiempo) >= 3.0:
                     self.inter_paso = 2
                     self.inter_tiempo = ahora
                     print("[Intersección] paso 1: a completado → d")
