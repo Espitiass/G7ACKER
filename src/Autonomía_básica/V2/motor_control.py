@@ -385,7 +385,8 @@ def generar_frames():
                     if bbox_marco is not None:
                         x, y, w_box, h_box = bbox_marco
                         cv2.putText(frame_proc, f"W_box: {w_box}", (10, 90),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+                                    cv2.FONT
+                                    ._HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
 
                         if w_box < 215:
                             enviar_comando("a")
