@@ -264,7 +264,7 @@ class QRLogic:
         # ==============================
         # 🟢 DESCARGA  →  ID 6, 7, 8
         # ==============================
-        if self.estado in ("ESPERA_DESCARGA", "ESPERA_OBJETIVO", "ESPERA_OBJETIVO_QR"):
+        if self.estado in ("ESPERA_DESCARGA"):
             if tag_id in (6, 7, 8):
                 num_estacion_tag = contenido.get("numero")
                 posicion         = contenido.get("posicion", "").lower()
@@ -279,22 +279,23 @@ class QRLogic:
         # ==============================
         # 🟢 FIN RECORRIDO  →  ID 9, 10
         # ==============================
-        if self.estado == "ESPERA_FIN_RECORRIDO":
-            if tag_id in (9, 10):
-                dir_text = contenido.get("carril 1", "").lower()
+        #if self.estado == "ESPERA_FIN_RECORRIDO":
+         #   if tag_id in (9, 10):
+          #      dir_text = contenido.get("carril 1", "").lower()
 
-                if dir_text:
-                    if "izquierda" in dir_text:
-                        self.direccion_guardada = "izquierda"
-                    elif "derecho" in dir_text or "derecha" in dir_text:
-                        self.direccion_guardada = "derecho"
-
-                    print(f"[Estado] Fin recorrido (ID {tag_id}) -> dirección: {self.direccion_guardada}")
+      
+      #          if dir_text:
+       #             if "izquierda" in dir_text:
+        #                self.direccion_guardada = "izquierda"
+         #           elif "derecho" in dir_text or "derecha" in dir_text:
+          #              self.direccion_guardada = "derecho"
+#
+ #                   print(f"[Estado] Fin recorrido (ID {tag_id}) -> dirección: {self.direccion_guardada}")
                     # Seguir línea normalmente hasta que pierda la amarilla
-                    self.ultimo_comando_enviado = "FORZAR"
-                    self.enviar_accion(None)
-                    self.estado = "ESPERANDO_PERDER_AMARILLA"
-            return
+  #                  self.ultimo_comando_enviado = "FORZAR"
+   #                 self.enviar_accion(None)
+    #                self.estado = "ESPERANDO_PERDER_AMARILLA"
+         #   return
 
     # ==============================
     # ⚙️ ACCIONES
@@ -425,7 +426,7 @@ class QRLogic:
 
             elif self.inter_paso == 2:
                 self.enviar_accion("d") #izquierda
-                if (ahora - self.inter_tiempo) >= 6.0:
+                if (ahora - self.inter_tiempo) >= 4.0:
                     self.inter_paso = 3
                     self.inter_tiempo = ahora
                     print("[Intersección] paso 2: d completado → a")
@@ -438,7 +439,7 @@ class QRLogic:
                     del self.inter_tiempo
                     self.ultimo_comando_enviado = "FORZAR"
                     self.enviar_accion("SEGUIR_BUSCANDO")
-                    self.estado = "ESPERA_OBJETIVO"
+                    self.estado = "ESPERA_DESCARGA"
                     self.direccion_guardada = None
 
         elif self.estado == "ESPERA_FIN_DESCARGA":
@@ -451,6 +452,10 @@ class QRLogic:
                     self.estado = "ESPERANDO_FIN_CARRERA_DESCARGA"
             else:
                 self.contador_infrarrojo = 0
+                 # ✅ seguir línea mientras no hay IR
+                if self.ultimo_comando_enviado != None:
+                    self.ultimo_comando_enviado = "FORZAR"
+                    self.enviar_accion(None)
 
         elif self.estado == "ESPERANDO_FIN_CARRERA_DESCARGA":
             if not self.fin_carrera.is_pressed:
