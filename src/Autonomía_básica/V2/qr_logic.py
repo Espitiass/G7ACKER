@@ -279,23 +279,17 @@ class QRLogic:
         # ==============================
         # 🟢 FIN RECORRIDO  →  ID 9, 10
         # ==============================
-        #if self.estado == "ESPERA_FIN_RECORRIDO":
-         #   if tag_id in (9, 10):
-          #      dir_text = contenido.get("carril 1", "").lower()
-
-      
-      #          if dir_text:
-       #             if "izquierda" in dir_text:
-        #                self.direccion_guardada = "izquierda"
-         #           elif "derecho" in dir_text or "derecha" in dir_text:
-          #              self.direccion_guardada = "derecho"
-#
- #                   print(f"[Estado] Fin recorrido (ID {tag_id}) -> dirección: {self.direccion_guardada}")
-                    # Seguir línea normalmente hasta que pierda la amarilla
-  #                  self.ultimo_comando_enviado = "FORZAR"
-   #                 self.enviar_accion(None)
-    #                self.estado = "ESPERANDO_PERDER_AMARILLA"
-         #   return
+        if self.estado == "ESPERA_FIN_RECORRIDO":
+            if tag_id in (9):
+                carril_key = "carril 1"  # siempre carril 1 en el regreso
+                dir_text = contenido.get(carril_key, "").lower()
+                if "izquierda" in dir_text:
+                    self.direccion_guardada = "izquierda"
+                    print(f"[Estado] Fin recorrido (ID {tag_id}) → CRUZANDO_INTERSECCION")
+                    self.ultimo_comando_enviado = "FORZAR"
+                    self.enviar_accion(None)
+                    self.estado = "CRUZANDO_INTERSECCION"
+            return
 
     # ==============================
     # ⚙️ ACCIONES
