@@ -371,7 +371,7 @@ def generar_frames():
                         marco_detectado, bbox_marco = detectar_marco_azul(frame_bgr)
                         if marco_detectado and bbox_marco is not None:
                             x, y, w_box, h_box = bbox_marco
-                            if w_box > 200:
+                            if w_box > 210:
                                 print(f"[INFO] MARCO DETECTADO (w={w_box}) → ACERCANDO")
                                 estado = "ACERCARSE_TAG"
                                 tiempo_estado = time.time()
@@ -387,7 +387,7 @@ def generar_frames():
                         cv2.putText(frame_proc, f"W_box: {w_box}", (10, 90),
                                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
 
-                        if w_box < 205:
+                        if w_box < 215:
                             enviar_comando("a")
                         else:
                             print("[INFO] DISTANCIA OK → DETENER")
