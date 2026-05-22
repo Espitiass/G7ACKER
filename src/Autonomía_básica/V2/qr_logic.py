@@ -280,15 +280,14 @@ class QRLogic:
         # 🟢 FIN RECORRIDO  →  ID 9, 10
         # ==============================
         if self.estado == "ESPERA_FIN_RECORRIDO":
-            if tag_id in (9):
-                carril_key = "carril 1"  # siempre carril 1 en el regreso
-                dir_text = contenido.get(carril_key, "").lower()
+            if tag_id in (9, 10):
+                dir_text = contenido.get("carril 1", "").lower()
                 if "izquierda" in dir_text:
                     self.direccion_guardada = "izquierda"
                     print(f"[Estado] Fin recorrido (ID {tag_id}) → CRUZANDO_INTERSECCION")
+                    self.estado = "CRUZANDO_INTERSECCION_2"  # ← estado PRIMERO
                     self.ultimo_comando_enviado = "FORZAR"
-                    self.enviar_accion(None)
-                    self.estado = "CRUZANDO_INTERSECCION"
+                    self.enviar_accion(None)               # ← luego limpiar queue
             return
 
     # ==============================
@@ -434,6 +433,36 @@ class QRLogic:
                     self.ultimo_comando_enviado = "FORZAR"
                     self.enviar_accion("SEGUIR_BUSCANDO")
                     self.estado = "ESPERA_DESCARGA"
+                    self.direccion_guardada = None
+
+        elif self.estado == "CRUZANDO_INTERSECCION_2":
+            if not hasattr(self, 'inter_paso'):
+                self.inter_paso = 0
+                self.inter_tiempo = ahora
+
+            elif self.inter_paso == 0:
+                self.enviar_accion("a")
+                if (ahora - self.inter_tiempo) >= 10.0:
+                    self.inter_paso = 1
+                    self.inter_tiempo = ahora
+                    print("[Intersección2] paso 0: a completado → d")
+
+            elif self.inter_paso == 1:
+                self.enviar_accion("d")
+                if (ahora - self.inter_tiempo) >= 5.0:
+                    self.inter_paso = 2
+                    self.inter_tiempo = ahora
+                    print("[Intersección2] paso 1: d completado → a")
+
+            elif self.inter_paso == 2:
+                self.enviar_accion("a")
+                if (ahora - self.inter_tiempo) >= 2.0:
+                    print("[Intersección2] paso 2: completo → ESPERA_OBJETIVO")
+                    del self.inter_paso
+                    del self.inter_tiempo
+                    self.ultimo_comando_enviado = "FORZAR"
+                    self.enviar_accion("SEGUIR_BUSCANDO")
+                    self.estado = "ESPERA_OBJETIVO"
                     self.direccion_guardada = None
 
         elif self.estado == "ESPERA_FIN_DESCARGA":
