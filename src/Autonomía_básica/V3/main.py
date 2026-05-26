@@ -23,8 +23,8 @@ if __name__ == '__main__':
     line_status_queue = mp.Queue()
     status_queue = mp.Queue()
 
-    from Vision_Artificial.motor_control import run_motor_control
-    from Vision_Artificial.qr_logic import run_qr_logic
+    from motor_control import run_motor_control
+    from qr_logic import run_qr_logic
 
     proc_qr = mp.Process(
         target=run_qr_logic,

@@ -51,13 +51,19 @@ except Exception as e:
 # ==============================
 # Controlador PI
 # ==============================
-Kp = 0.05
-Ki = 0.001
+Kp = 0.12
+Ki = 0.0
 integral_error = 0.0
 tiempo_pi = time.time()
 OFFSET_DERECHA = 50   # píxeles: distancia deseada entre centro del carro y línea azul oscura
 SERVO_MIN = 40
 SERVO_MAX = 140
+
+# Debug
+_ultimo_log_angulo = 0.0
+debug_error = 0
+debug_angulo = 90
+debug_ambas = False
 
 # ==============================
 # Ultrasonido
@@ -312,6 +318,7 @@ def generar_frames():
     global qr_logic_activo
     global esperando_qr_logic, tiempo_espera_qr_logic
     global integral_error, tiempo_pi
+    global debug_error, debug_angulo, debug_ambas
 
     print("[Motor] Entrando a generar_frames()")
 
@@ -418,19 +425,26 @@ def generar_frames():
                         dt = ahora_pi - tiempo_pi
                         tiempo_pi = ahora_pi
 
+                        debug_ambas = ambas_lineas
                         if obstaculo_cercano:
                             enviar_stop()
                             integral_error = 0.0
                         elif ambas_lineas and centro_carril is not None:
                             # Caso 1: ambas líneas → PI sobre error de carril
+                            debug_error = error
                             angulo = aplicar_pi(error, dt)
+                            debug_angulo = angulo
                             enviar_angulo(angulo)
                         elif dark_blue_center is not None:
                             # Caso 2.1: solo línea azul oscura (curva o recta) → PI con ref derecha
                             error_azul = (centro_imagen + OFFSET_DERECHA) - dark_blue_center
+                            debug_error = error_azul
                             angulo = aplicar_pi(error_azul, dt)
+                            debug_angulo = angulo
                             enviar_angulo(angulo)
                         else:
+                            debug_error = 0
+                            debug_angulo = 90
                             enviar_stop()
                             integral_error = 0.0
 
@@ -527,6 +541,8 @@ def generar_frames():
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
             cv2.putText(frame_proc, f"W: {w_box}", (10, 90),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
+            cv2.putText(frame_proc, f"Error: {debug_error}  Ang: {debug_angulo}  Ambas: {debug_ambas}",
+                        (10, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
 
             # ==============================
             # STREAM
@@ -542,11 +558,16 @@ def generar_frames():
 
 
 def enviar_angulo(angulo):
+    global _ultimo_log_angulo
     if ser is None:
         return
     try:
         with serial_lock:
             ser.write(f"S:{angulo}\n".encode())
+        ahora = time.time()
+        if ahora - _ultimo_log_angulo >= 0.5:
+            print(f"[PI] Angulo={angulo}  Error={debug_error}  Ambas={debug_ambas}")
+            _ultimo_log_angulo = ahora
     except Exception as e:
         print(f"[Motor] Error serial enviar_angulo: {e}")
 
@@ -568,7 +589,7 @@ def aplicar_pi(error, dt):
     integral_error += error * dt
     integral_error = max(-200.0, min(200.0, integral_error))  # anti-windup
     u = Kp * error + Ki * integral_error
-    angulo = int(90 + u)
+    angulo = int(90 - u)
     return max(SERVO_MIN, min(SERVO_MAX, angulo))
 
 def enviar_comando(cmd):
