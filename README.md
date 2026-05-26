@@ -112,6 +112,7 @@ G7ACKER/
 │   ├── bitacoras/
 │   ├── imagenes/
 │   ├── matriz_control_de_documentos/
+│   ├── presentacion_final/
 │   └── README.md
 │
 ├── hardware/                         # Diseño electrónico y PCB
