@@ -1,33 +1,35 @@
-# G7ACKER - Robot Móvil Autónomo con Visión Artificial
+# 🤖 G7ACKER - Robot Móvil Autónomo con Visión Artificial
 
 Sistema de robot móvil con conducción autónoma basado en visión artificial, diseñado para navegación en entornos estructurados mediante seguimiento de carril, detección de obstáculos y dirección tipo Ackermann.
 
 ---
 
-## Descripción del Proyecto
+# 📖 Descripción del Proyecto
 
-El proyecto consta del desarrolo de un robot móvil autónomo que integra procesamiento visual, sensores de proximidad y control embebido distribuido para lograr un desplazamiento inteligente sin intervención humana.
+El proyecto consiste en el desarrollo de un robot móvil autónomo que integra procesamiento visual, sensores de proximidad y control embebido distribuido para lograr un desplazamiento inteligente sin intervención humana.
 
 El sistema está orientado a simular escenarios reales de movilidad autónoma, como vehículos terrestres a pequeña escala que operan sobre carriles definidos.
 
 El enfoque del proyecto combina:
 
-* Visión artificial para percepción del entorno
-* Sensado híbrido (ultrasonido + infrarrojo)
-* Control distribuido (Raspberry Pi + ESP32)
-* Sistema de dirección tipo Ackermann
+- Visión artificial para percepción del entorno
+- Detección de estaciones mediante sensor infrarrojo
+- Control distribuido (Raspberry Pi + ESP32)
+- Sistema de dirección tipo Ackermann
 
 ---
 
-## Demo del Sistema
+# 🎥 Demo del Sistema
 
-![Funcionamiento del robot](docs/imagenes/demo.gif)
+## Funcionamiento del robot
+
+> *(Agregar imágenes, GIF o enlace de video del funcionamiento)*
 
 ---
 
-### Flujo del sistema
+# 🔄 Flujo del Sistema
 
-```
+```text
 [Cámara IMX219]
         ↓
 [Procesamiento en Raspberry Pi (OpenCV)]
@@ -43,83 +45,123 @@ El enfoque del proyecto combina:
 
 ---
 
-## Hardware del Sistema
+# 🛠️ Hardware del Sistema
 
-### Unidad de procesamiento
+## 🧠 Unidad de procesamiento
 
-* Raspberry Pi 5
-* ESP32
-
-### Sensores
-
-* Cámara IMX219 (visión artificial)
-* Sensor ultrasónico HC-SR04 (detección frontal de obstáculos)
-* 2 Sensores infrarrojos TCRT5000 (seguimiento de línea lateral)
-
-### Actuadores
-
-* 2 motores DC JGY-370
-* Servo motor MG90 (engranajes metálicos)
-
-### Sistema de dirección
-
-* Configuración tipo Ackermann
-
-### Etapa de potencia
-
-* Driver TB6612FNG Dual Motor
-
-### Alimentación
-
-* Batería LiPo 7.4V – 5A
-* Regulador XL4016 (salida a 5V, alta corriente)
-* Regulador LM2596 (salida a 3.3V)
+- Raspberry Pi 5
+- ESP32
 
 ---
 
-## Software y Tecnologías
+## 📡 Sensores
 
-* Lenguaje principal: Python
-* Procesamiento de imagen: OpenCV
-* Control embebido: ESP32 (C/C++)
-* Comunicación: Serial USB
+- Cámara IMX219 (visión artificial)
+- Sensor ultrasónico HC-SR04 (detección frontal de obstáculos)
+- 1 Sensor infrarrojo TCRT5000 (detección lateral de estaciones de carga y descarga)
 
 ---
 
-## Estructura del Repositorio
+## ⚙️ Actuadores
 
-```
+- 2 Motores DC JGY-370
+- Servo motor MG90 (engranajes metálicos)
+
+---
+
+## 🚗 Sistema de dirección
+
+- Configuración tipo Ackermann
+
+---
+
+## ⚡ Etapa de potencia
+
+- Driver TB6612FNG Dual Motor
+
+---
+
+## 🔋 Alimentación
+
+- Batería LiPo 7.4V – 5A
+- Regulador XL4016 (salida a 5V, alta corriente)
+- Regulador LM2596 (salida a 3.3V)
+
+---
+
+# 💻 Software y Tecnologías
+
+| Tecnología | Uso |
+|---|---|
+| Python | Lógica principal y visión artificial |
+| OpenCV | Procesamiento de imagen |
+| ESP32 (C/C++) | Control embebido |
+| Serial USB | Comunicación Raspberry Pi ↔ ESP32 |
+
+---
+
+# 📂 Estructura del Repositorio
+
+```text
 G7ACKER/
-│── src/            # Código fuente
-│── docs/           # Documentación e imágenes
-│── hardware/       # Diseño electrónico y PCB
-│── mechanical/     # Diseño estructural
-│── README.md
+├── .vscode/                          # Configuración de Visual Studio Code
+│   └── settings.json
+│
+├── docs/                             # Documentación del proyecto
+│   ├── acta_constitucion/
+│   ├── bitacoras/
+│   ├── imagenes/
+│   ├── matriz_control_de_documentos/
+│   └── README.md
+│
+├── hardware/                         # Diseño electrónico y PCB
+│   ├── esquematico/
+│   ├── pcb/
+│   └── README.md
+│
+├── mechanical/                       # Diseño mecánico y estructural
+│   ├── Diseños_de_prueba/
+│   ├── Diseños_finales/
+│   └── README.md
+│
+├── src/                              # Código fuente
+│   ├── Autonomía_básica/
+│   ├── Control_de_motores/
+│   ├── Pruebas/
+│   └── README.md
+│
+├── .gitignore
+├── LICENSE
+├── README.md
+├── Scriptsactivate
+└── test.jpg
 ```
 
 ---
 
-## Estado del Proyecto
+# 📊 Estado del Proyecto
 
-* Diseño electrónico completado
-* PCB en fabricación
-* Sistema mecánico en desarrollo
-* Integración de visión artificial en progreso
-* Implementación de control autónomo en desarrollo
-
----
-
-## Autores
-
-- **Sofía Salomé Espitia Jiménez** – Área de diseño  
-- **Vanesa Galeano Franco** – Área de programación  
-- **Julián Andrés García Correa** – Área eléctrica y electrónica  
-- **Jose Lisander Hurtado Castañeda** – Área mecánica  
+| Módulo | Estado |
+|---|---|
+| Diseño electrónico | ✅ Completado |
+| PCB | ✅ Fabricada y operativa |
+| Sistema mecánico | ✅ Completado |
+| Visión artificial | ✅ Integrada y funcional |
+| Control autónomo | 🧪 Pruebas finales |
 
 ---
 
-## Licencia
+# 👥 Autores
 
-MIT License
+| Integrante | Área |
+|---|---|
+| Sofía Salomé Espitia Jiménez | Área de diseño |
+| Vanesa Galeano Franco | Área de programación |
+| Julián Andrés García Correa | Área eléctrica y electrónica |
+| Jose Lisander Hurtado Castañeda | Área mecánica |
 
 ---
+
+# 📄 Licencia
+
+Este proyecto se distribuye bajo la licencia MIT License.
