@@ -55,7 +55,7 @@ Kp = 0.12
 Ki = 0.0
 integral_error = 0.0
 tiempo_pi = time.time()
-OFFSET_DERECHA = 250  # píxeles: distancia deseada entre centro del carro y línea azul oscura
+OFFSET_DERECHA = 350  # píxeles: distancia deseada entre centro del carro y línea azul oscura
 SERVO_MIN = 40
 SERVO_MAX = 140
 
