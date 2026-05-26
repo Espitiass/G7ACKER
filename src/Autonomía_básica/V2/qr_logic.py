@@ -270,17 +270,20 @@ class QRLogic:
             return
 
         # ==============================
-        # 🟢 FIN RECORRIDO  →  ID 9, 10
+        # 🟢 FIN RECORRIDO  →  ID 9
         # ==============================
         if self.estado == "ESPERA_FIN_RECORRIDO":
-            if tag_id in (9, 10):
-                dir_text = contenido.get("carril 1", "").lower()
-                if "izquierda" in dir_text:
-                    self.direccion_guardada = "izquierda"
-                    print(f"[Estado] Fin recorrido (ID {tag_id}) → CRUZANDO_INTERSECCION")
-                    self.estado = "CRUZANDO_INTERSECCION_2"  # ← estado PRIMERO
-                    self.ultimo_comando_enviado = "FORZAR"
-                    self.enviar_accion(None)               # ← luego limpiar queue
+            if tag_id == 9:
+                print(f"[Estado] Tag 9 → CRUZANDO_INTERSECCION_2")
+                self.estado = "CRUZANDO_INTERSECCION_2"
+                self.ultimo_comando_enviado = "FORZAR"
+                self.enviar_accion(None)
+
+            elif tag_id == 10:
+                print("[Estado] Tag 10 + carril 3 → CRUZANDO")
+                self.estado = "CRUZANDO"
+                self.ultimo_comando_enviado = "FORZAR"
+                self.enviar_accion(None)
             return
 
     # ==============================
@@ -343,21 +346,14 @@ class QRLogic:
 
             if self.inter_paso == 0:
                 self.enviar_accion("d")
-                if (ahora - self.inter_tiempo) >= .0:
+                if (ahora - self.inter_tiempo) >= 1.0:
                     self.inter_paso = 1
                     self.inter_tiempo = ahora
                     print("[Cruzar] paso 1: d completado → i")
 
-            if self.inter_paso == 1:
-                self.enviar_accion("i")
-                if (ahora - self.inter_tiempo) >= 1.0:
-                    self.inter_paso = 2
-                    self.inter_tiempo = ahora
-                    print("[Cruzar] paso 2: i completado → a")
-
-            elif self.inter_paso == 2:
+            elif self.inter_paso == 1:
                 self.enviar_accion("a")
-                if (ahora - self.inter_tiempo) >= 3.0:
+                if (ahora - self.inter_tiempo) >= 4.0:
                     print("[Cruzar] paso 2: completo → seguir línea buscando QR")
                     del self.inter_paso
                     del self.inter_tiempo
@@ -384,7 +380,7 @@ class QRLogic:
             
             elif self.inter_paso == 1:
                 self.enviar_accion("a")
-                if (ahora - self.inter_tiempo) >= 4.0:
+                if (ahora - self.inter_tiempo) >= 3.0:
                     self.inter_paso = 2
                     self.inter_tiempo = ahora
                     print("[Intersección] paso 1: a completado → d")
@@ -414,7 +410,7 @@ class QRLogic:
 
             elif self.inter_paso == 0:
                 self.enviar_accion("a")
-                if (ahora - self.inter_tiempo) >= 10.0:
+                if (ahora - self.inter_tiempo) >= 6.0:
                     self.inter_paso = 1
                     self.inter_tiempo = ahora
                     print("[Intersección2] paso 0: a completado → d")
