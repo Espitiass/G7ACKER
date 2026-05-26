@@ -55,7 +55,7 @@ Kp = 0.12
 Ki = 0.0
 integral_error = 0.0
 tiempo_pi = time.time()
-OFFSET_DERECHA = 50   # píxeles: distancia deseada entre centro del carro y línea azul oscura
+OFFSET_DERECHA = 250  # píxeles: distancia deseada entre centro del carro y línea azul oscura
 SERVO_MIN = 40
 SERVO_MAX = 140
 
@@ -218,7 +218,7 @@ def detectar_carriles(frame):
     mask_cian_clean = cv2.morphologyEx(mask_cian_clean, cv2.MORPH_OPEN, kernel)
 
     contornos, _ = cv2.findContours(mask_total, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    contornos_filtrados = [c for c in contornos if cv2.contourArea(c) > 50]
+    contornos_filtrados = [c for c in contornos if cv2.contourArea(c) > 300]
 
     # Contornos solo de cian (amarilla física) en el lado izquierdo
     contornos_cian, _ = cv2.findContours(mask_cian_clean, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -270,15 +270,21 @@ def detectar_carriles(frame):
         elif error <= -100:
             direccion = "DERECHA"
 
-    # Centro de la línea azul oscura (referencia derecha)
-    dark_blue_center = int(np.mean(centros_der)) if centros_der else None
+    # Centro de la línea azul oscura — mayor contorno del mask azul, sin importar lado
+    mask_azul_clean = cv2.morphologyEx(mask_azul, cv2.MORPH_CLOSE, kernel)
+    mask_azul_clean = cv2.morphologyEx(mask_azul_clean, cv2.MORPH_OPEN, kernel)
+    contornos_azul_d, _ = cv2.findContours(mask_azul_clean, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contornos_azul_d = [c for c in contornos_azul_d if cv2.contourArea(c) > 300]
+    if contornos_azul_d:
+        c_mayor = max(contornos_azul_d, key=cv2.contourArea)
+        M_az = cv2.moments(c_mayor)
+        dark_blue_center = int(M_az["m10"] / M_az["m00"]) if M_az["m00"] != 0 else None
+    else:
+        dark_blue_center = None
 
     # Detección de curvatura: compara posición X de azul oscura en mitad sup vs inf del ROI
     curvatura = False
     if dark_blue_center is not None:
-        kernel_az = np.ones((5, 5), np.uint8)
-        mask_azul_clean = cv2.morphologyEx(mask_azul, cv2.MORPH_CLOSE, kernel_az)
-        mask_azul_clean = cv2.morphologyEx(mask_azul_clean, cv2.MORPH_OPEN, kernel_az)
         mitad_y = roi_h // 2
         pts_sup = cv2.findNonZero(mask_azul_clean[:mitad_y, :])
         pts_inf = cv2.findNonZero(mask_azul_clean[mitad_y:, :])
@@ -430,13 +436,13 @@ def generar_frames():
                             enviar_stop()
                             integral_error = 0.0
                         elif ambas_lineas and centro_carril is not None:
-                            # Caso 1: ambas líneas → PI sobre error de carril
+                            # Caso 1: ambas líneas → PI sobre midpoint
                             debug_error = error
                             angulo = aplicar_pi(error, dt)
                             debug_angulo = angulo
                             enviar_angulo(angulo)
                         elif dark_blue_center is not None:
-                            # Caso 2.1: solo línea azul oscura (curva o recta) → PI con ref derecha
+                            # Caso 2: solo línea azul oscura → PI con ref derecha + offset
                             error_azul = (centro_imagen + OFFSET_DERECHA) - dark_blue_center
                             debug_error = error_azul
                             angulo = aplicar_pi(error_azul, dt)
