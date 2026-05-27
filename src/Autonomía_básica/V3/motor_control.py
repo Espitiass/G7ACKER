@@ -55,7 +55,7 @@ Kp = 0.12
 Ki = 0.0
 integral_error = 0.0
 tiempo_pi = time.time()
-OFFSET_DERECHA = 350  # píxeles: distancia deseada entre centro del carro y línea azul oscura
+OFFSET_DERECHA = 400  # píxeles: distancia deseada entre centro del carro y línea azul oscura
 SERVO_MIN = 40
 SERVO_MAX = 140
 
@@ -64,6 +64,9 @@ _ultimo_log_angulo = 0.0
 debug_error = 0
 debug_angulo = 90
 debug_ambas = False
+
+# Debounce: frames consecutivos sin línea antes de enviar stop
+contador_sin_linea = 0
 
 # ==============================
 # Ultrasonido
@@ -325,6 +328,7 @@ def generar_frames():
     global esperando_qr_logic, tiempo_espera_qr_logic
     global integral_error, tiempo_pi
     global debug_error, debug_angulo, debug_ambas
+    global contador_sin_linea
 
     print("[Motor] Entrando a generar_frames()")
 
@@ -435,12 +439,14 @@ def generar_frames():
                         if obstaculo_cercano:
                             enviar_stop()
                             integral_error = 0.0
+                            contador_sin_linea = 0
                         elif ambas_lineas and centro_carril is not None:
                             # Caso 1: ambas líneas → PI sobre midpoint
                             debug_error = error
                             angulo = aplicar_pi(error, dt)
                             debug_angulo = angulo
                             enviar_angulo(angulo)
+                            contador_sin_linea = 0
                         elif dark_blue_center is not None:
                             # Caso 2: solo línea azul oscura → PI con ref derecha + offset
                             error_azul = (centro_imagen + OFFSET_DERECHA) - dark_blue_center
@@ -448,11 +454,13 @@ def generar_frames():
                             angulo = aplicar_pi(error_azul, dt)
                             debug_angulo = angulo
                             enviar_angulo(angulo)
+                            contador_sin_linea = 0
                         else:
+                            contador_sin_linea += 1
                             debug_error = 0
                             debug_angulo = 90
-                            enviar_stop()
-                            integral_error = 0.0
+                            if contador_sin_linea >= 5:
+                                integral_error = 0.0
 
                     # Timeout de seguridad
                     if esperando_qr_logic and (time.time() - tiempo_espera_qr_logic) > 8.0:
@@ -564,12 +572,13 @@ def generar_frames():
 
 
 def enviar_angulo(angulo):
-    global _ultimo_log_angulo
+    global _ultimo_log_angulo, ultimo_comando
     if ser is None:
         return
     try:
         with serial_lock:
             ser.write(f"S:{angulo}\n".encode())
+        ultimo_comando = None  # permite que el próximo enviar_stop() fire inmediatamente
         ahora = time.time()
         if ahora - _ultimo_log_angulo >= 0.5:
             print(f"[PI] Angulo={angulo}  Error={debug_error}  Ambas={debug_ambas}")
