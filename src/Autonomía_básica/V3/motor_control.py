@@ -56,7 +56,7 @@ Ki = 0.0
 integral_error = 0.0
 tiempo_pi = time.time()
 OFFSET_DERECHA = 300  # píxeles: distancia deseada entre centro del carro y línea azul oscura
-OFFSET_CENTRO = 40   # bias de dos líneas: desplaza el carro a la derecha del midpoint
+OFFSET_CENTRO = 0   # bias de dos líneas: desplaza el carro a la derecha del midpoint
 SERVO_MIN = 40
 SERVO_MAX = 140
 
@@ -545,6 +545,7 @@ def generar_frames():
                     enviar_stop()
                     if time.time() - tiempo_estado > 1.5:
                         print("[Motor] Cooldown terminado → SEGUIR_LINEA")
+                        integral_error = 0.0
                         estado = "SEGUIR_LINEA"
 
             # ==============================

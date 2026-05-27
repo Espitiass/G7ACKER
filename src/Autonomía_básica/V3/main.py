@@ -16,14 +16,13 @@ if __name__ == '__main__':
 
     signal.signal(signal.SIGINT, signal_handler)
 
-    mp.set_start_method('spawn', force=True)
+    mp.set_start_method('fork', force=True)
 
     qr_queue = mp.Queue()
     action_queue = mp.Queue()
     line_status_queue = mp.Queue()
     status_queue = mp.Queue()
 
-    from motor_control import run_motor_control
     from qr_logic import run_qr_logic
 
     proc_qr = mp.Process(
@@ -33,6 +32,8 @@ if __name__ == '__main__':
     )
 
     proc_qr.start()
+
+    from motor_control import run_motor_control
 
     print("[Main] Stream en: http://<IP>:5000")
 
