@@ -55,7 +55,8 @@ Kp = 0.12
 Ki = 0.0
 integral_error = 0.0
 tiempo_pi = time.time()
-OFFSET_DERECHA = 400  # píxeles: distancia deseada entre centro del carro y línea azul oscura
+OFFSET_DERECHA = 300  # píxeles: distancia deseada entre centro del carro y línea azul oscura
+OFFSET_CENTRO = 60   # bias de dos líneas: desplaza el carro a la derecha del midpoint
 SERVO_MIN = 40
 SERVO_MAX = 140
 
@@ -441,9 +442,9 @@ def generar_frames():
                             integral_error = 0.0
                             contador_sin_linea = 0
                         elif ambas_lineas and centro_carril is not None:
-                            # Caso 1: ambas líneas → PI sobre midpoint
-                            debug_error = error
-                            angulo = aplicar_pi(error, dt)
+                            # Caso 1: ambas líneas → PI sobre midpoint con bias derecha
+                            debug_error = error - OFFSET_CENTRO
+                            angulo = aplicar_pi(error - OFFSET_CENTRO, dt)
                             debug_angulo = angulo
                             enviar_angulo(angulo)
                             contador_sin_linea = 0
