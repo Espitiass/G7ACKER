@@ -288,7 +288,7 @@ class QRLogic:
 
             elif tag_id == 10:
                 print("[Estado] Tag 10 + carril 3 → CRUZANDO")
-                self.estado = "CRUZANDO"
+                self.estado = "CRUZANDO_2"
                 self.ultimo_comando_enviado = "FORZAR"
                 self.enviar_accion(None)
             return
@@ -360,6 +360,20 @@ class QRLogic:
                 self.estado = "ESPERA_DESCARGA"
                 self.direccion_guardada = None
 
+        elif self.estado == "CRUZANDO_2":
+            if not hasattr(self, 'inter_tiempo'):
+                self.inter_tiempo = ahora
+                self.enviar_accion("CRUZANDO")
+                print("[Cruzar2] PI activo con referencia azul oscura")
+
+            if (ahora - self.inter_tiempo) >= 4.0:
+                print("[Cruzar2] completo → seguir línea buscando QR")
+                del self.inter_tiempo
+                self.ultimo_comando_enviado = "FORZAR"
+                self.enviar_accion("SEGUIR_BUSCANDO")
+                self.estado = "ESPERA_OBJETIVO"
+                self.direccion_guardada = None
+
         # ==============================
         # 🔶 CRUZANDO INTERSECCIÓN (curva fija 100°)
         # ==============================
@@ -393,14 +407,14 @@ class QRLogic:
                     print("[Intersección] completo → ESPERA_DESCARGA")
 
         elif self.estado == "CRUZANDO_INTERSECCION_2":
-            PULSOS_CI2 = 1825  # 30cm
+            PULSOS_CI2 = 2434  # 40cm
 
             if not hasattr(self, '_ci2_init'):
                 self._ci2_init = True
                 self._ci2_pulsos_ref = self.pulsos  # snapshot al entrar
                 self.ultimo_comando_enviado = "FORZAR"
                 self.enviar_accion("S:90")
-                print(f"[Intersección2] Recto S:90 por 30cm (ref={self._ci2_pulsos_ref})")
+                print(f"[Intersección2] Recto S:90 por 40cm (ref={self._ci2_pulsos_ref})")
 
             if not hasattr(self, '_ci2_giro'):
                 # Si el reset ya ocurrió, pulsos < ref → contamos desde 0
