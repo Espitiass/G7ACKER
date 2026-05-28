@@ -48,6 +48,29 @@ except Exception as e:
     print(f"[Motor] Error al abrir puerto serie: {e}")
     ser = None
 
+# Pulsos acumulados desde último reset (se actualiza desde hilo lector)
+pulsos_acumulados = 0
+
+def hilo_lector_serial():
+    global pulsos_acumulados
+    while True:
+        try:
+            if ser:
+                linea = None
+                with serial_lock:
+                    if ser.in_waiting > 0:
+                        linea = ser.readline().decode('utf-8', errors='ignore').strip()
+                if linea and linea.startswith("P1:"):
+                    partes = linea.split()
+                    p1 = int(partes[0].split(":")[1])
+                    p2 = int(partes[1].split(":")[1])
+                    pulsos_acumulados = (p1 + p2) // 2
+        except:
+            pass
+        time.sleep(0.02)
+
+threading.Thread(target=hilo_lector_serial, daemon=True).start()
+
 # ==============================
 # Controlador PI
 # ==============================
@@ -310,7 +333,7 @@ def detectar_carriles(frame):
     if line_status_queue is not None:
         try:
             line_status_queue.put(
-                {"ambas": ambas_lineas, "amarilla": hay_amarilla},
+                {"ambas": ambas_lineas, "amarilla": hay_amarilla, "pulsos": pulsos_acumulados},
                 block=False
             )
         except:
@@ -329,7 +352,7 @@ def generar_frames():
     global esperando_qr_logic, tiempo_espera_qr_logic
     global integral_error, tiempo_pi
     global debug_error, debug_angulo, debug_ambas
-    global contador_sin_linea
+    global contador_sin_linea, pulsos_acumulados
 
     print("[Motor] Entrando a generar_frames()")
 
@@ -355,6 +378,13 @@ def generar_frames():
                     estado = "SEGUIR_LINEA"
                     qr_logic_activo = True
                     print("[Motor] Override OFF → siguiendo línea")
+
+                elif accion == "RESET_ENCODER":
+                    pulsos_acumulados = 0
+                    if ser:
+                        with serial_lock:
+                            ser.write(b'r\n')
+                    print("[Motor] Encoder reseteado")
 
                 elif accion == "SEGUIR_BUSCANDO":
                     override_activo = False

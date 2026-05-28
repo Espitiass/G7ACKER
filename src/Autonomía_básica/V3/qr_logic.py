@@ -83,9 +83,10 @@ class QRLogic:
         self.carril_objetivo = None
         self.direccion_guardada = None
 
-        # ✅ Ahora recibimos dict {"ambas": bool, "amarilla": bool}
+        # ✅ Ahora recibimos dict {"ambas": bool, "amarilla": bool, "pulsos": int}
         self.ambas_lineas = False
         self.hay_amarilla = False
+        self.pulsos = 0
 
         self.qr_visible = False
         self.tiempo_ultimo_qr = 0
@@ -132,6 +133,7 @@ class QRLogic:
                     if isinstance(line_data, dict):
                         self.ambas_lineas = line_data.get("ambas", False)
                         self.hay_amarilla = line_data.get("amarilla", False)
+                        self.pulsos = line_data.get("pulsos", 0)
                     else:
                         self.ambas_lineas = bool(line_data)
             except:
@@ -246,7 +248,7 @@ class QRLogic:
                     print("[Estado] Tag 5 + carril 2 → CRUZANDO_INTERSECCION")
                     self.estado = "CRUZANDO_INTERSECCION"
                     self.ultimo_comando_enviado = "FORZAR"
-                    self.enviar_accion(None)
+                    self.enviar_accion("RESET_ENCODER")
                 elif self.carril_objetivo == "carril 3":
                     print("[Estado] Tag 5 + carril 3 → CRUZANDO")
                     self.estado = "CRUZANDO"
@@ -276,13 +278,13 @@ class QRLogic:
             if tag_id == 9:
                 print(f"[Estado] Tag 9 → CRUZANDO_INTERSECCION_2")
                 self.estado = "CRUZANDO_INTERSECCION_2"
-                # Vaciar cola para que no haya comandos pendientes
                 try:
                     while True:
                         self.action_queue.get(block=False)
                 except:
                     pass
-                # S:90 se enviará en el próximo ciclo de actualizar_accion
+                self.ultimo_comando_enviado = "FORZAR"
+                self.enviar_accion("RESET_ENCODER")
 
             elif tag_id == 10:
                 print("[Estado] Tag 10 + carril 3 → CRUZANDO")
@@ -362,41 +364,62 @@ class QRLogic:
         # 🔶 CRUZANDO INTERSECCIÓN (curva fija 100°)
         # ==============================
         elif self.estado == "CRUZANDO_INTERSECCION":
-            if not hasattr(self, 'inter_tiempo'):
-                self.inter_tiempo = ahora
-                self.enviar_accion("S:60")
-                print("[Intersección] Curva fija S:60 por 6s")
+            PULSOS_CI = 1825  # 30cm
 
-            if (ahora - self.inter_tiempo) >= 6.0:
-                print("[Intersección] completo → seguir línea buscando QR")
-                del self.inter_tiempo
+            if not hasattr(self, '_ci_init'):
+                self._ci_init = True
+                self._ci_pulsos_ref = self.pulsos  # snapshot al entrar
                 self.ultimo_comando_enviado = "FORZAR"
-                self.enviar_accion("SEGUIR_BUSCANDO")
-                self.estado = "ESPERA_DESCARGA"
-                self.direccion_guardada = None
+                self.enviar_accion(None)
+                print(f"[Intersección] Siguiendo línea 30cm (ref={self._ci_pulsos_ref})")
+
+            if not hasattr(self, '_ci_giro'):
+                # Si el reset ya ocurrió, pulsos < ref → contamos desde 0
+                recorridos = self.pulsos - self._ci_pulsos_ref if self.pulsos >= self._ci_pulsos_ref else self.pulsos
+                if recorridos >= PULSOS_CI:
+                    self._ci_giro = ahora
+                    self.ultimo_comando_enviado = "FORZAR"
+                    self.enviar_accion("S:35")
+                    print(f"[Intersección] {recorridos} pulsos → S:35 por 3s")
+            else:
+                if (ahora - self._ci_giro) >= 3.0:
+                    del self._ci_giro
+                    del self._ci_init
+                    del self._ci_pulsos_ref
+                    self.ultimo_comando_enviado = "FORZAR"
+                    self.enviar_accion("SEGUIR_BUSCANDO")
+                    self.estado = "ESPERA_DESCARGA"
+                    self.direccion_guardada = None
+                    print("[Intersección] completo → ESPERA_DESCARGA")
 
         elif self.estado == "CRUZANDO_INTERSECCION_2":
-            if not hasattr(self, '_ci2_init'):
-                self._ci2_init = ahora
-                self.ultimo_comando_enviado = "FORZAR"
-                self.enviar_accion("S:90")
-                print("[Intersección2] S:90 por 2s")
+            PULSOS_CI2 = 5537  # 91cm
 
-            if not hasattr(self, 'inter_tiempo'):
-                if (ahora - self._ci2_init) >= 5.0:
-                    self.inter_tiempo = ahora
+            if not hasattr(self, '_ci2_init'):
+                self._ci2_init = True
+                self._ci2_pulsos_ref = self.pulsos  # snapshot al entrar
+                self.ultimo_comando_enviado = "FORZAR"
+                self.enviar_accion(None)
+                print(f"[Intersección2] Siguiendo línea 91cm (ref={self._ci2_pulsos_ref})")
+
+            if not hasattr(self, '_ci2_giro'):
+                # Si el reset ya ocurrió, pulsos < ref → contamos desde 0
+                recorridos = self.pulsos - self._ci2_pulsos_ref if self.pulsos >= self._ci2_pulsos_ref else self.pulsos
+                if recorridos >= PULSOS_CI2:
+                    self._ci2_giro = ahora
                     self.ultimo_comando_enviado = "FORZAR"
-                    self.enviar_accion("S:50")
-                    print("[Intersección2] → S:50 por 5s")
+                    self.enviar_accion("S:35")
+                    print(f"[Intersección2] {recorridos} pulsos → S:35 por 3s")
             else:
-                if (ahora - self.inter_tiempo) >= 5.0:
-                    print("[Intersección2] completo → ESPERA_OBJETIVO")
-                    del self.inter_tiempo
+                if (ahora - self._ci2_giro) >= 3.0:
+                    del self._ci2_giro
                     del self._ci2_init
+                    del self._ci2_pulsos_ref
                     self.ultimo_comando_enviado = "FORZAR"
                     self.enviar_accion("SEGUIR_BUSCANDO")
                     self.estado = "ESPERA_OBJETIVO"
                     self.direccion_guardada = None
+                    print("[Intersección2] completo → ESPERA_OBJETIVO")
 
         elif self.estado == "ESPERA_FIN_DESCARGA":
             if self.infrarrojo_detecta():
