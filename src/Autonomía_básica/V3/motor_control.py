@@ -65,6 +65,12 @@ def hilo_lector_serial():
                     p1 = int(partes[0].split(":")[1])
                     p2 = int(partes[1].split(":")[1])
                     pulsos_acumulados = (p1 + p2) // 2
+                    # Enviar pulsos directamente aunque esté en override
+                    if line_status_queue is not None:
+                        try:
+                            line_status_queue.put({"pulsos": pulsos_acumulados}, block=False)
+                        except:
+                            pass
         except:
             pass
         time.sleep(0.02)

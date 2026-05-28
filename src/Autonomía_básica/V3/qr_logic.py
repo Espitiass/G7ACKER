@@ -131,9 +131,9 @@ class QRLogic:
                         break
                 if line_data is not None:
                     if isinstance(line_data, dict):
-                        self.ambas_lineas = line_data.get("ambas", False)
-                        self.hay_amarilla = line_data.get("amarilla", False)
-                        self.pulsos = line_data.get("pulsos", 0)
+                        self.ambas_lineas = line_data.get("ambas", self.ambas_lineas)
+                        self.hay_amarilla = line_data.get("amarilla", self.hay_amarilla)
+                        self.pulsos = line_data.get("pulsos", self.pulsos)
                     else:
                         self.ambas_lineas = bool(line_data)
             except:
@@ -364,14 +364,14 @@ class QRLogic:
         # 🔶 CRUZANDO INTERSECCIÓN (curva fija 100°)
         # ==============================
         elif self.estado == "CRUZANDO_INTERSECCION":
-            PULSOS_CI = 1825  # 30cm
+            PULSOS_CI = 1339  # 22cm
 
             if not hasattr(self, '_ci_init'):
                 self._ci_init = True
                 self._ci_pulsos_ref = self.pulsos  # snapshot al entrar
                 self.ultimo_comando_enviado = "FORZAR"
                 self.enviar_accion(None)
-                print(f"[Intersección] Siguiendo línea 30cm (ref={self._ci_pulsos_ref})")
+                print(f"[Intersección] Siguiendo línea 25cm (ref={self._ci_pulsos_ref})")
 
             if not hasattr(self, '_ci_giro'):
                 # Si el reset ya ocurrió, pulsos < ref → contamos desde 0
@@ -379,10 +379,10 @@ class QRLogic:
                 if recorridos >= PULSOS_CI:
                     self._ci_giro = ahora
                     self.ultimo_comando_enviado = "FORZAR"
-                    self.enviar_accion("S:35")
-                    print(f"[Intersección] {recorridos} pulsos → S:35 por 3s")
+                    self.enviar_accion("S:40")
+                    print(f"[Intersección] {recorridos} pulsos → S:40 por 4s")
             else:
-                if (ahora - self._ci_giro) >= 3.0:
+                if (ahora - self._ci_giro) >= 4.0:
                     del self._ci_giro
                     del self._ci_init
                     del self._ci_pulsos_ref
@@ -393,14 +393,14 @@ class QRLogic:
                     print("[Intersección] completo → ESPERA_DESCARGA")
 
         elif self.estado == "CRUZANDO_INTERSECCION_2":
-            PULSOS_CI2 = 5537  # 91cm
+            PULSOS_CI2 = 1825  # 30cm
 
             if not hasattr(self, '_ci2_init'):
                 self._ci2_init = True
                 self._ci2_pulsos_ref = self.pulsos  # snapshot al entrar
                 self.ultimo_comando_enviado = "FORZAR"
-                self.enviar_accion(None)
-                print(f"[Intersección2] Siguiendo línea 91cm (ref={self._ci2_pulsos_ref})")
+                self.enviar_accion("S:90")
+                print(f"[Intersección2] Recto S:90 por 30cm (ref={self._ci2_pulsos_ref})")
 
             if not hasattr(self, '_ci2_giro'):
                 # Si el reset ya ocurrió, pulsos < ref → contamos desde 0
@@ -408,10 +408,10 @@ class QRLogic:
                 if recorridos >= PULSOS_CI2:
                     self._ci2_giro = ahora
                     self.ultimo_comando_enviado = "FORZAR"
-                    self.enviar_accion("S:35")
-                    print(f"[Intersección2] {recorridos} pulsos → S:35 por 3s")
+                    self.enviar_accion("S:40")
+                    print(f"[Intersección2] {recorridos} pulsos → S:40 por 3s")
             else:
-                if (ahora - self._ci2_giro) >= 3.0:
+                if (ahora - self._ci2_giro) >= 4.0:
                     del self._ci2_giro
                     del self._ci2_init
                     del self._ci2_pulsos_ref
