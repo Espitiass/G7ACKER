@@ -276,14 +276,13 @@ class QRLogic:
             if tag_id == 9:
                 print(f"[Estado] Tag 9 → CRUZANDO_INTERSECCION_2")
                 self.estado = "CRUZANDO_INTERSECCION_2"
-                # Vaciar cola para que no haya "x" pendientes que consuman el delay de 4s
+                # Vaciar cola para que no haya comandos pendientes
                 try:
                     while True:
                         self.action_queue.get(block=False)
                 except:
                     pass
-                self.ultimo_comando_enviado = "FORZAR"
-                self.enviar_accion(None)
+                # S:90 se enviará en el próximo ciclo de actualizar_accion
 
             elif tag_id == 10:
                 print("[Estado] Tag 10 + carril 3 → CRUZANDO")
@@ -365,8 +364,8 @@ class QRLogic:
         elif self.estado == "CRUZANDO_INTERSECCION":
             if not hasattr(self, 'inter_tiempo'):
                 self.inter_tiempo = ahora
-                self.enviar_accion("S:55")
-                print("[Intersección] Curva fija S:55 por 6s")
+                self.enviar_accion("S:60")
+                print("[Intersección] Curva fija S:60 por 6s")
 
             if (ahora - self.inter_tiempo) >= 6.0:
                 print("[Intersección] completo → seguir línea buscando QR")
@@ -379,50 +378,21 @@ class QRLogic:
         elif self.estado == "CRUZANDO_INTERSECCION_2":
             if not hasattr(self, '_ci2_init'):
                 self._ci2_init = ahora
-                self._amarilla_vista = False
-                self._sin_amarilla_count = 0
                 self.ultimo_comando_enviado = "FORZAR"
-                self.enviar_accion(None)  # qr_logic_activo=True: sigue línea sin detección de marcos
-                print("[Intersección2] Siguiendo línea hasta perder azul clarita")
+                self.enviar_accion("S:90")
+                print("[Intersección2] S:90 por 2s")
 
             if not hasattr(self, 'inter_tiempo'):
-                if self.hay_amarilla:
-                    self._amarilla_vista = True
-                    self._sin_amarilla_count = 0
-                    if hasattr(self, '_perdida_tiempo'):
-                        del self._perdida_tiempo
-                else:
-                    if self._amarilla_vista:
-                        self._sin_amarilla_count += 1
-
-                timeout_alcanzado = (ahora - self._ci2_init) >= 15.0
-                amarilla_perdida = self._amarilla_vista and self._sin_amarilla_count >= 3
-
-                if amarilla_perdida and not hasattr(self, '_perdida_tiempo'):
-                    self._perdida_tiempo = ahora
-                    self.ultimo_comando_enviado = "FORZAR"
-                    self.enviar_accion("S:90")
-                    print("[Intersección2] Azul clarita perdida → avanzando recto 2.5s más")
-
-                listo_para_girar = hasattr(self, '_perdida_tiempo') and (ahora - self._perdida_tiempo) >= 4.0
-
-                if listo_para_girar or timeout_alcanzado:
+                if (ahora - self._ci2_init) >= 5.0:
                     self.inter_tiempo = ahora
                     self.ultimo_comando_enviado = "FORZAR"
                     self.enviar_accion("S:50")
-                    if timeout_alcanzado:
-                        print("[Intersección2] Timeout 15s → Curva S:50 por 6s")
-                    else:
-                        print("[Intersección2] Delay completo → Curva S:50 por 6s")
+                    print("[Intersección2] → S:50 por 5s")
             else:
-                if (ahora - self.inter_tiempo) >= 6.0:
+                if (ahora - self.inter_tiempo) >= 5.0:
                     print("[Intersección2] completo → ESPERA_OBJETIVO")
                     del self.inter_tiempo
                     del self._ci2_init
-                    del self._amarilla_vista
-                    del self._sin_amarilla_count
-                    if hasattr(self, '_perdida_tiempo'):
-                        del self._perdida_tiempo
                     self.ultimo_comando_enviado = "FORZAR"
                     self.enviar_accion("SEGUIR_BUSCANDO")
                     self.estado = "ESPERA_OBJETIVO"
