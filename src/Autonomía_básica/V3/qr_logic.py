@@ -407,7 +407,7 @@ class QRLogic:
                     print("[Intersección] completo → ESPERA_DESCARGA")
 
         elif self.estado == "CRUZANDO_INTERSECCION_2":
-            PULSOS_CI2 = 2434  # 40cm
+            PULSOS_CI2 = 2556  # 42cm
 
             if not hasattr(self, '_ci2_init'):
                 self._ci2_init = True

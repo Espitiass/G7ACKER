@@ -164,22 +164,44 @@ ultimo_tag_id = None
 tiempo_ultimo_tag = 0
 cooldown_tag = 0.5
 
-def leer_tag(frame_bgr):
-    """Detecta AprilTags en el frame completo. Devuelve (detectado, tag_id, corners)."""
+def leer_tag(frame_bgr, bbox_marco=None, margen=20):
+    """Detecta AprilTags. Si se pasa bbox_marco, solo acepta el tag cuyo
+    centro caiga dentro de ese marco (con un margen de tolerancia en px)."""
     global ultimo_tag_id, tiempo_ultimo_tag
 
     gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
     resultados = detector_apriltag.detect(gray)
+    if not resultados:
+        return False, None, None
 
-    if resultados:
-        tag = max(resultados, key=lambda t: t.decision_margin)
-        tag_id = tag.tag_id
-        ahora = time.time()
+    candidatos = resultados
 
-        if tag_id != ultimo_tag_id or (ahora - tiempo_ultimo_tag) > cooldown_tag:
-            ultimo_tag_id = tag_id
-            tiempo_ultimo_tag = ahora
-            return True, tag_id, tag.corners
+    # 🔒 Anclar la lectura al marco validado
+    if bbox_marco is not None:
+        mx, my, mw, mh = bbox_marco
+        x1, y1 = mx - margen, my - margen
+        x2, y2 = mx + mw + margen, my + mh + margen
+        candidatos = []
+        for t in resultados:
+            cx, cy = t.center  # centro del tag en píxeles (full frame)
+            if x1 <= cx <= x2 and y1 <= cy <= y2:
+                candidatos.append(t)
+
+    candidatos = [t for t in candidatos
+                  if cv2.contourArea(t.corners.astype(np.float32)) >= 1500]  # ajusta según tu cámara
+
+    if not candidatos:
+        return False, None, None
+
+    # Entre los que están dentro del marco, el más grande (= el más cercano)
+    tag = max(candidatos, key=lambda t: cv2.contourArea(t.corners.astype(np.float32)))
+    tag_id = tag.tag_id
+    ahora = time.time()
+
+    if tag_id != ultimo_tag_id or (ahora - tiempo_ultimo_tag) > cooldown_tag:
+        ultimo_tag_id = tag_id
+        tiempo_ultimo_tag = ahora
+        return True, tag_id, tag.corners
 
     return False, None, None
 
@@ -187,17 +209,14 @@ def leer_tag(frame_bgr):
 # Detección de marco amarillo
 # ==============================
 def detectar_marco_azul(frame):
-    """Detecta el marco amarillo del tag en la mitad derecha del frame."""
     h, w = frame.shape[:2]
 
-    x_inicio = int(w * 0.5)
+    x_inicio = int(w * 0.35)        # ← antes 0.5 ; incluye el centro (curva)
     roi = frame[:, x_inicio:]
 
     hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
-
     lower = np.array([10, 120, 120])
     upper = np.array([35, 255, 255])
-
     mask = cv2.inRange(hsv, lower, upper)
 
     kernel = np.ones((5, 5), np.uint8)
@@ -206,15 +225,20 @@ def detectar_marco_azul(frame):
 
     contornos, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
+    mejor = None
+    mejor_area = 0
     for c in contornos:
         area = cv2.contourArea(c)
         if area > 2000:
             x, y, wc, hc = cv2.boundingRect(c)
             ratio = wc / float(hc)
-            if 0.7 < ratio < 1.3:
-                x_global = x + x_inicio
-                return True, (x_global, y, wc, hc)
+            if 0.45 < ratio < 1.7:       # ← antes 0.7–1.3 ; tolera perspectiva
+                if area > mejor_area:     # ← quédate con el más grande (más cercano)
+                    mejor_area = area
+                    mejor = (x + x_inicio, y, wc, hc)
 
+    if mejor is not None:
+        return True, mejor
     return False, None
 
 # ==============================
@@ -508,7 +532,7 @@ def generar_frames():
                         marco_detectado, bbox_marco = detectar_marco_azul(frame_bgr)
                         if marco_detectado and bbox_marco is not None:
                             x, y, w_box, h_box = bbox_marco
-                            if w_box > 210:
+                            if w_box > 150:
                                 print(f"[INFO] MARCO DETECTADO (w={w_box}) → ACERCANDO")
                                 estado = "ACERCARSE_TAG"
                                 tiempo_estado = time.time()
@@ -521,13 +545,34 @@ def generar_frames():
 
                     if bbox_marco is not None:
                         x, y, w_box, h_box = bbox_marco
+
+                        ancho_frame = frame_bgr.shape[1]
+                        MARGEN_BORDE = 40
+                        borde_der = (x + w_box) >= (ancho_frame - MARGEN_BORDE)
+
                         cv2.putText(frame_proc, f"W_box: {w_box}", (10, 90),
                                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
 
-                        if w_box < 215:
-                            enviar_angulo(90)  # avanzar recto
+                        # 🔍 Intentar leer YA durante el acercamiento (antes de que se corte)
+                        tag_detectado, tag_id, corners = leer_tag(frame_bgr, bbox_marco)
+
+                        if tag_detectado:
+                            print(f"[TAG] LEÍDO en acercamiento: ID={tag_id}")
+                            enviar_stop()
+                            qr_guardado = f"TAG:{tag_id}"
+                            if qr_queue is not None:
+                                qr_queue.put(tag_id)
+                            estado = "COOLDOWN_TAG"
+                            tiempo_estado = time.time()
+                            esperando_qr_logic = True
+                            tiempo_espera_qr_logic = time.time()
+
+                        elif w_box < 215 and not borde_der:
+                            enviar_angulo(90)  # seguir avanzando recto
+
                         else:
-                            print("[INFO] DISTANCIA OK → DETENER")
+                            # Cerca o a punto de cortarse y aún no leyó → parar e intentar
+                            print("[INFO] Cerca / borde derecho → DETENER e intentar leer")
                             enviar_stop()
                             estado = "DETECTAR_TAG"
                             tiempo_estado = time.time()
@@ -547,7 +592,7 @@ def generar_frames():
                         if marco_detectado and bbox_marco is not None:
                             x, y, w_box, h_box = bbox_marco
 
-                            tag_detectado, tag_id, corners = leer_tag(frame_bgr)
+                            tag_detectado, tag_id, corners = leer_tag(frame_bgr, bbox_marco)
 
                             if tag_detectado and corners is not None:
                                 pts = corners.astype(int)
