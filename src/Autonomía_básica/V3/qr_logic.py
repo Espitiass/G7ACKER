@@ -407,32 +407,26 @@ class QRLogic:
                     print("[Intersección] completo → ESPERA_DESCARGA")
 
         elif self.estado == "CRUZANDO_INTERSECCION_2":
-            PULSOS_CI2 = 1216  # 20cm
-
             if not hasattr(self, '_ci2_init'):
-                self._ci2_init = True
-                self._ci2_pulsos_ref = self.pulsos  # snapshot al entrar
+                self._ci2_init = ahora
                 self.ultimo_comando_enviado = "FORZAR"
                 self.enviar_accion("S:90")
-                print(f"[Intersección2] Recto S:90 por 40cm (ref={self._ci2_pulsos_ref})")
+                print("[Intersección2] Recto S:90")
 
-            if not hasattr(self, '_ci2_giro'):
-                # Si el reset ya ocurrió, pulsos < ref → contamos desde 0
-                recorridos = self.pulsos - self._ci2_pulsos_ref if self.pulsos >= self._ci2_pulsos_ref else self.pulsos
-                if recorridos >= PULSOS_CI2:
+            elif not hasattr(self, '_ci2_giro'):
+                if (ahora - self._ci2_init) >= 5:   # ← segundos recto, calibra este valor
                     self._ci2_giro = ahora
                     self.ultimo_comando_enviado = "FORZAR"
                     self.enviar_accion("S:40")
-                    print(f"[Intersección2] {recorridos} pulsos → S:40 por 3s")
+                    print("[Intersección2] → S:40")
+
             else:
                 if (ahora - self._ci2_giro) >= 4.0:
                     del self._ci2_giro
                     del self._ci2_init
-                    del self._ci2_pulsos_ref
                     self.ultimo_comando_enviado = "FORZAR"
                     self.enviar_accion("SEGUIR_BUSCANDO")
                     self.estado = "ESPERA_OBJETIVO"
-                    self.direccion_guardada = None
                     print("[Intersección2] completo → ESPERA_OBJETIVO")
 
         elif self.estado == "ESPERA_FIN_DESCARGA":
