@@ -378,7 +378,7 @@ class QRLogic:
         # 🔶 CRUZANDO INTERSECCIÓN (curva fija 100°)
         # ==============================
         elif self.estado == "CRUZANDO_INTERSECCION":
-            PULSOS_CI = 1825  # 30cm
+            PULSOS_CI = 1338  # 22cm
 
             if not hasattr(self, '_ci_init'):
                 self._ci_init = True
@@ -396,7 +396,7 @@ class QRLogic:
                     self.enviar_accion("S:40")
                     print(f"[Intersección] {recorridos} pulsos → S:40 por 4s")
             else:
-                if (ahora - self._ci_giro) >= 4.0:
+                if (ahora - self._ci_giro) >= 5.0:
                     del self._ci_giro
                     del self._ci_init
                     del self._ci_pulsos_ref
@@ -407,7 +407,7 @@ class QRLogic:
                     print("[Intersección] completo → ESPERA_DESCARGA")
 
         elif self.estado == "CRUZANDO_INTERSECCION_2":
-            PULSOS_CI2 = 1338  # 25cm
+            PULSOS_CI2 = 1216  # 20cm
 
             if not hasattr(self, '_ci2_init'):
                 self._ci2_init = True

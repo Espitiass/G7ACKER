@@ -532,7 +532,7 @@ def generar_frames():
                         marco_detectado, bbox_marco = detectar_marco_azul(frame_bgr)
                         if marco_detectado and bbox_marco is not None:
                             x, y, w_box, h_box = bbox_marco
-                            if w_box > 150:
+                            if w_box > 200:
                                 print(f"[INFO] MARCO DETECTADO (w={w_box}) → ACERCANDO")
                                 estado = "ACERCARSE_TAG"
                                 tiempo_estado = time.time()
