@@ -24,8 +24,8 @@ docs/
 │── imagenes/
 |
 │── presentacion_final/
-│   ├── Acta de Constitución.docx
-│   ├── Propuesta formal.docx
+│   ├── ATLAS.pdf
+│   ├── ARTICULO_POSTER_ATLAS.pdf
 |
 |── MATRIZ_CONTROL_DE_DOCUMENTOS.xlsx
 │
