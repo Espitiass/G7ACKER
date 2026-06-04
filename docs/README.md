@@ -23,6 +23,10 @@ docs/
 │
 │── imagenes/
 |
+│── presentacion_final/
+│   ├── Acta de Constitución.docx
+│   ├── Propuesta formal.docx
+|
 |── MATRIZ_CONTROL_DE_DOCUMENTOS.xlsx
 │
 │── README.md
