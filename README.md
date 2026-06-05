@@ -112,6 +112,7 @@ G7ACKER/
 │   ├── bitacoras/
 │   ├── imagenes/
 │   ├── matriz_control_de_documentos/
+│   ├── poster/
 │   ├── presentacion_final/
 │   └── README.md
 │
