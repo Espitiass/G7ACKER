@@ -19,6 +19,7 @@ import sys
 qr_logic_activo = False
 esperando_qr_logic = False
 tiempo_espera_qr_logic = 0
+_offset_hasta = 0.0    
 
 ultimo_comando = None
 override_activo = False
@@ -80,20 +81,27 @@ threading.Thread(target=hilo_lector_serial, daemon=True).start()
 # ==============================
 # Controlador PI
 # ==============================
-Kp = 0.12
-Ki = 0.0
+Kp = 0.13
+Ki = 0.001
 integral_error = 0.0
 tiempo_pi = time.time()
-OFFSET_DERECHA = 300  # píxeles: distancia deseada entre centro del carro y línea azul oscura
-OFFSET_CENTRO = 60   # bias de dos líneas: desplaza el carro a la derecha del midpoint
+OFFSET_DERECHA = 300
+OFFSET_CENTRO = 0
 SERVO_MIN = 40
 SERVO_MAX = 140
+
+_ang_suave = 96
+SLEW_PI = 6   # grados máx por frame SOLO en seguidor de línea (no afecta S:)
+_resume_hasta = 0.0
+RESUME_T = 1.2         # s de arranque suave tras un tag/override
+RESUME_ANG_MAX = 90     # durante ese tiempo NO gira fuerte a la derecha (roja)
 
 # Debug
 _ultimo_log_angulo = 0.0
 debug_error = 0
 debug_angulo = 90
 debug_ambas = False
+offset_descarga = 0
 
 # Debounce: frames consecutivos sin línea antes de enviar stop
 contador_sin_linea = 0
@@ -188,7 +196,7 @@ def leer_tag(frame_bgr, bbox_marco=None, margen=20):
                 candidatos.append(t)
 
     candidatos = [t for t in candidatos
-                  if cv2.contourArea(t.corners.astype(np.float32)) >= 1500]  # ajusta según tu cámara
+                  if cv2.contourArea(t.corners.astype(np.float32)) >= 800]  # ajusta según tu cámara
 
     if not candidatos:
         return False, None, None
@@ -383,6 +391,7 @@ def generar_frames():
     global integral_error, tiempo_pi
     global debug_error, debug_angulo, debug_ambas
     global contador_sin_linea, pulsos_acumulados
+    global _resume_hasta, offset_descarga, _offset_hasta
 
     print("[Motor] Entrando a generar_frames()")
 
@@ -407,6 +416,7 @@ def generar_frames():
                     comando_override = None
                     estado = "SEGUIR_LINEA"
                     qr_logic_activo = True
+                    _resume_hasta = time.time() + RESUME_T      # ← arranque suave
                     print("[Motor] Override OFF → siguiendo línea")
 
                 elif accion == "RESET_ENCODER":
@@ -422,7 +432,24 @@ def generar_frames():
                     estado = "SEGUIR_LINEA"
                     qr_logic_activo = False
                     esperando_qr_logic = False
+                    _resume_hasta = time.time() + RESUME_T      # ← arranque suave
                     print("[Motor] Siguiendo línea buscando tag")
+
+                elif accion == "OFFSET_ON":
+                    offset_descarga = -60            # descarga: ajusta
+                    _offset_hasta = time.time() + 50 # ← dura 10 s desde que ve el tag
+                    _resume_hasta = 0.0
+                    print("[Motor] Offset descarga ON (10s)")
+
+                elif accion == "OFFSET_OFF":
+                    offset_descarga = 0
+                    _offset_hasta = 0.078
+                    print("[Motor] Offset OFF")
+
+                elif accion == "OFFSET_ON_CARGA":
+                    offset_descarga = 0             # carga: ajusta (pos = lejos de la roja)
+                    _offset_hasta = 0.0              # ← 0 = dura hasta que el IR mande OFFSET_OFF
+                    print("[Motor] Offset carga ON")
 
                 else:
                     override_activo = True
@@ -488,6 +515,12 @@ def generar_frames():
                 # 🟢 SEGUIR LINEA
                 # ==============================
                 if estado == "SEGUIR_LINEA":
+
+                    if _offset_hasta and time.time() > _offset_hasta:
+                        offset_descarga = 0
+                        _offset_hasta = 0.0
+                        print("[Motor] Offset descarga expiró (10s)")
+
                     resultado = detectar_carriles(frame_bgr)
                     if resultado is not None:
                         frame_proc, direccion, centro_carril, dark_blue_center, centro_imagen, error, _, ambas_lineas, _ = resultado
@@ -503,18 +536,18 @@ def generar_frames():
                             contador_sin_linea = 0
                         elif ambas_lineas and centro_carril is not None:
                             # Caso 1: ambas líneas → PI sobre midpoint con bias derecha
-                            debug_error = error - OFFSET_CENTRO
-                            angulo = aplicar_pi(error - OFFSET_CENTRO, dt)
+                            debug_error = error - OFFSET_CENTRO + offset_descarga
+                            angulo = aplicar_pi(error - OFFSET_CENTRO + offset_descarga, dt)
                             debug_angulo = angulo
-                            enviar_angulo(angulo)
+                            enviar_angulo_suave(angulo)
                             contador_sin_linea = 0
                         elif dark_blue_center is not None:
                             # Caso 2: solo línea azul oscura → PI con ref derecha + offset
-                            error_azul = (centro_imagen + OFFSET_DERECHA) - dark_blue_center
+                            error_azul = (centro_imagen + OFFSET_DERECHA) - dark_blue_center + offset_descarga
                             debug_error = error_azul
                             angulo = aplicar_pi(error_azul, dt)
                             debug_angulo = angulo
-                            enviar_angulo(angulo)
+                            enviar_angulo_suave(angulo)
                             contador_sin_linea = 0
                         else:
                             contador_sin_linea += 1
@@ -532,7 +565,7 @@ def generar_frames():
                         marco_detectado, bbox_marco = detectar_marco_azul(frame_bgr)
                         if marco_detectado and bbox_marco is not None:
                             x, y, w_box, h_box = bbox_marco
-                            if w_box > 200:
+                            if w_box > 150:
                                 print(f"[INFO] MARCO DETECTADO (w={w_box}) → ACERCANDO")
                                 estado = "ACERCARSE_TAG"
                                 tiempo_estado = time.time()
@@ -655,13 +688,14 @@ def generar_frames():
 
 
 def enviar_angulo(angulo):
-    global _ultimo_log_angulo, ultimo_comando
+    global _ultimo_log_angulo, ultimo_comando, _ang_suave
     if ser is None:
         return
     try:
         with serial_lock:
             ser.write(f"S:{angulo}\n".encode())
-        ultimo_comando = None  # permite que el próximo enviar_stop() fire inmediatamente
+        ultimo_comando = None
+        _ang_suave = angulo          # ← rastrear el ángulo real del servo
         ahora = time.time()
         if ahora - _ultimo_log_angulo >= 0.5:
             print(f"[PI] Angulo={angulo}  Error={debug_error}  Ambas={debug_ambas}")
@@ -669,8 +703,22 @@ def enviar_angulo(angulo):
     except Exception as e:
         print(f"[Motor] Error serial enviar_angulo: {e}")
 
+
+def enviar_angulo_suave(angulo):
+    """Limita el salto por frame (slew) + arranque suave tras tag. Solo seguidor de línea."""
+    global _ang_suave
+    # arranque suave: tras un tag no permitir giro fuerte a la derecha (hacia la roja)
+    if time.time() < _resume_hasta and angulo > RESUME_ANG_MAX:
+        angulo = RESUME_ANG_MAX
+    # slew
+    if angulo > _ang_suave + SLEW_PI:
+        angulo = _ang_suave + SLEW_PI
+    elif angulo < _ang_suave - SLEW_PI:
+        angulo = _ang_suave - SLEW_PI
+    enviar_angulo(angulo)
+
 def enviar_stop():
-    global ultimo_comando
+    global ultimo_comando, _ang_suave
     if ser is None:
         return
     if ultimo_comando != "x":
@@ -679,6 +727,7 @@ def enviar_stop():
                 ser.write("x\n".encode())
                 print("[Motor] Enviado: x")
                 ultimo_comando = "x"
+                _ang_suave = 90      # ← al frenar, el próximo arranque ramp-ea desde recto
         except Exception as e:
             print(f"[Motor] Error serial enviar_stop: {e}")
 

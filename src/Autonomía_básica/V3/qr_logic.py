@@ -218,6 +218,7 @@ class QRLogic:
         if self.estado == "ESPERA_CARGA":
             if tag_id == 1:
                 print("[Estado] Tag Carga (ID 1) -> seguir línea directo")
+                self.action_queue.put("OFFSET_ON_CARGA")
                 self.ultimo_comando_enviado = "FORZAR"
                 self.enviar_accion(None)
                 self.estado = "ESPERA_OBJETIVO"
@@ -259,15 +260,16 @@ class QRLogic:
         # ==============================
         # 🟢 DESCARGA  →  ID 6, 7, 8
         # ==============================
-        if self.estado in ("ESPERA_DESCARGA"):
+        if self.estado == "ESPERA_DESCARGA":
             if tag_id in (6, 7, 8):
                 num_estacion_tag = contenido.get("numero")
                 posicion         = contenido.get("posicion", "").lower()
 
-                if posicion == "entrada" and num_estacion_tag == self.numero_estacion:
+                if posicion == "entrada" and num_estacion_tag == self.numero_estacion:  
                     print(f"[Estado] Entrada a estación {self.numero_estacion} (ID {tag_id})")
                     self.ultimo_comando_enviado = "FORZAR"
                     self.enviar_accion(None)   # bloquea marcos + sigue línea
+                    self.action_queue.put("OFFSET_ON")
                     self.estado = "ESPERA_FIN_DESCARGA"
             return
 
@@ -322,6 +324,7 @@ class QRLogic:
                 elif (ahora - self.tiempo_fin_carrera) >= 5.0:
                     print("[Estado] Delay completo → seguir línea buscando QR")
                     del self.tiempo_fin_carrera
+                    self.action_queue.put("OFFSET_OFF")  
                     self.ultimo_comando_enviado = "FORZAR"
                     self.ultimo_qr_procesado = None
                     self.numero_estacion = None
@@ -378,7 +381,7 @@ class QRLogic:
         # 🔶 CRUZANDO INTERSECCIÓN (curva fija 100°)
         # ==============================
         elif self.estado == "CRUZANDO_INTERSECCION":
-            PULSOS_CI = 1338  # 22cm
+            PULSOS_CI = 1600  # 26cm
 
             if not hasattr(self, '_ci_init'):
                 self._ci_init = True
@@ -410,11 +413,11 @@ class QRLogic:
             if not hasattr(self, '_ci2_init'):
                 self._ci2_init = ahora
                 self.ultimo_comando_enviado = "FORZAR"
-                self.enviar_accion("S:90")
-                print("[Intersección2] Recto S:90")
+                self.enviar_accion("S:85")
+                print("[Intersección2] Recto S:85")
 
             elif not hasattr(self, '_ci2_giro'):
-                if (ahora - self._ci2_init) >= 5:   # ← segundos recto, calibra este valor
+                if (ahora - self._ci2_init) >= 7:   # ← segundos recto, calibra este valor
                     self._ci2_giro = ahora
                     self.ultimo_comando_enviado = "FORZAR"
                     self.enviar_accion("S:40")
@@ -433,16 +436,37 @@ class QRLogic:
             if self.infrarrojo_detecta():
                 self.contador_infrarrojo += 1
                 if self.contador_infrarrojo >= self.umbral_infrarrojo:
+                    # IR confirmado → NO parar todavía: rodar 4 cm más siguiendo línea
+                    self._desc_pulsos_ref = self.pulsos   # snapshot del encoder
                     self.ultimo_comando_enviado = "FORZAR"
-                    self.enviar_accion("x")
-                    print("[Estado] IR confirmado → STOP, esperando fin carrera")
-                    self.estado = "ESPERANDO_FIN_CARRERA_DESCARGA"
+                    self.enviar_accion(None)              # asegura seguir línea
+                    print("[Estado] IR confirmado → rodar 4 cm más siguiendo línea")
+                    self.estado = "AVANCE_4CM_DESCARGA"
             else:
                 self.contador_infrarrojo = 0
                  # ✅ seguir línea mientras no hay IR
                 if self.ultimo_comando_enviado != None:
                     self.ultimo_comando_enviado = "FORZAR"
                     self.enviar_accion(None)
+
+        elif self.estado == "AVANCE_4CM_DESCARGA":
+            PULSOS_4CM = 243   # 4 cm (≈60.8 pulsos/cm, según PULSOS_CI=1338 → 22cm)
+
+            # Mantener seguimiento de línea durante el avance
+            if self.ultimo_comando_enviado != None:
+                self.ultimo_comando_enviado = "FORZAR"
+                self.enviar_accion(None)
+
+            recorridos = self.pulsos - self._desc_pulsos_ref
+            if recorridos < 0:        # protección contra ruido del encoder
+                recorridos = 0
+
+            if recorridos >= PULSOS_4CM:
+                del self._desc_pulsos_ref
+                self.ultimo_comando_enviado = "FORZAR"
+                self.enviar_accion("x")
+                print(f"[Estado] 4 cm completados ({recorridos} pulsos) → STOP")
+                self.estado = "ESPERANDO_FIN_CARRERA_DESCARGA"
 
         elif self.estado == "ESPERANDO_FIN_CARRERA_DESCARGA":
             if not self.fin_carrera.is_pressed:
@@ -453,6 +477,7 @@ class QRLogic:
                     print("[Estado] Timer completo → seguir línea buscando QR")
                     del self.tiempo_descarga
                     self.contador_infrarrojo = 0
+                    self.action_queue.put("OFFSET_OFF") 
                     self.ultimo_comando_enviado = "FORZAR"
                     self.enviar_accion("SEGUIR_BUSCANDO")
                     self.estado = "ESPERA_FIN_RECORRIDO"
